@@ -1,0 +1,1323 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ICSLIS OJT System | Manage Accounts</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@400;600;700&family=Work+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ink: #0a0a0c;
+      --paper: #f6f7f9;
+      --accent: #0f2b52;
+      --accent-2: #d9b65a;
+      --accent-3: #b9922f;
+      --muted: #6e7278;
+      --card: #ffffff;
+      --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+      --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.025);
+      --line: #e2e8f0;
+      --focus-ring: rgba(15, 43, 82, 0.15);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "Work Sans", system-ui, -apple-system, sans-serif;
+      color: var(--ink);
+      background: #f8f9fc;
+      min-height: 100vh;
+      padding: 0;
+    }
+
+    .shell { min-height: 100vh; }
+
+    /* Header Styles - Preserved */
+    .top-header {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      background: linear-gradient(160deg, rgba(15, 43, 82, 0.98), rgba(10, 10, 12, 0.98));
+      color: #f4f6f9;
+      padding: 16px 28px;
+      box-shadow: 0 18px 36px rgba(8, 10, 18, 0.25);
+    }
+
+    .top-inner {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      min-height: 96px;
+    }
+
+    .left-cluster {
+      display: inline-flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .nav-btn {
+      width: 46px;
+      height: 46px;
+      border-radius: 16px;
+      border: 1px solid rgba(217, 182, 90, 0.6);
+      background: rgba(15, 43, 82, 0.45);
+      color: #f4f6f9;
+      display: grid;
+      place-items: center;
+      cursor: pointer;
+      transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+    }
+
+    .nav-btn:hover {
+      border-color: rgba(217, 182, 90, 0.9);
+      background: rgba(15, 43, 82, 0.6);
+    }
+
+    .nav-btn:active { transform: translateY(1px); }
+
+    .nav-btn span,
+    .nav-btn span::before,
+    .nav-btn span::after {
+      content: "";
+      display: block;
+      width: 18px;
+      height: 2px;
+      background: currentColor;
+      border-radius: 999px;
+      transition: transform 0.2s ease;
+    }
+
+    .nav-btn span::before { transform: translateY(-6px); }
+    .nav-btn span::after { transform: translateY(4px); }
+
+    .brand-logo-and-title {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-logo {
+      width: 46px;
+      height: 46px;
+      border-radius: 14px;
+      overflow: hidden;
+      border: 2px solid rgba(217, 182, 90, 0.85);
+      box-shadow: 0 0 0 4px rgba(217, 182, 90, 0.18);
+    }
+
+    .brand-logo img { width: 100%; height: 100%; object-fit: cover; }
+
+    .site-title-left {
+      display: grid;
+      gap: 4px;
+      text-align: left;
+    }
+
+    .site-title-left h1 {
+      margin: 0;
+      font-family: "Fraunces", serif;
+      font-size: clamp(22px, 2.6vw, 30px);
+    }
+
+    .site-title-left p {
+      margin: 0;
+      font-size: 13px;
+      color: rgba(244, 246, 249, 0.75);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .header-meta {
+      display: grid;
+      gap: 6px;
+      text-align: right;
+      font-size: 12px;
+      color: rgba(244, 246, 249, 0.7);
+      align-items: center;
+    }
+
+    .header-meta strong {
+      font-size: 14px;
+      color: #f4f6f9;
+    }
+
+    /* Sidebar - Preserved/Updated */
+    .sidebar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 260px;
+      height: 100%;
+      background: #ffffff;
+      box-shadow: 8px 0 22px rgba(8, 9, 12, 0.18);
+      padding: 24px;
+      z-index: 100;
+      transform: translateX(-100%);
+      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .sidebar-open .sidebar { transform: translateX(0); }
+
+    .sidebar-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 24px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .sidebar-header h3 {
+      margin: 0;
+      font-size: 18px;
+      font-family: "Fraunces", serif;
+      color: var(--accent);
+    }
+
+    .close-btn {
+      border: none;
+      background: transparent;
+      font-size: 24px;
+      cursor: pointer;
+      color: var(--muted);
+      transition: color 0.2s;
+    }
+
+    .close-btn:hover { color: var(--accent); }
+
+    .sidebar-nav {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: grid;
+      gap: 8px;
+    }
+
+    .sidebar-nav a {
+      display: flex;
+      align-items: center;
+      text-decoration: none;
+      color: var(--ink);
+      font-weight: 500;
+      padding: 12px 16px;
+      border-radius: 12px;
+      transition: all 0.2s ease;
+    }
+
+    .sidebar-nav a:hover {
+      background: #f0f4f8;
+      color: var(--accent);
+      transform: translateX(4px);
+    }
+
+    .sidebar-backdrop {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(10, 10, 12, 0.4);
+      backdrop-filter: blur(2px);
+      z-index: 99;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.3s ease, visibility 0.3s ease;
+    }
+
+    .sidebar-open .sidebar-backdrop {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    /* Content & Layout */
+    .content {
+      max-width: 1280px;
+      margin: 0 auto;
+      display: grid;
+      gap: 32px;
+      padding: 40px 24px 60px;
+    }
+
+    .panel {
+      background: var(--card);
+      border-radius: 20px;
+      padding: 32px;
+      box-shadow: var(--shadow);
+      border: 1px solid var(--line);
+      display: grid;
+      gap: 24px;
+      transition: box-shadow 0.3s ease, transform 0.3s ease;
+    }
+
+    .panel:hover {
+      box-shadow: var(--shadow-lg);
+    }
+
+    .panel h2 {
+      margin: 0;
+      font-family: "Fraunces", serif;
+      font-size: 24px;
+      color: var(--accent);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .panel h2::before {
+      content: '';
+      display: block;
+      width: 6px;
+      height: 24px;
+      background: var(--accent-2);
+      border-radius: 3px;
+    }
+
+    /* Alerts */
+    .alert {
+      padding: 16px;
+      border-radius: 12px;
+      font-size: 14px;
+      border: 1px solid transparent;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      animation: fadeIn 0.3s ease-out;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .alert.success {
+      background: #ecfdf5;
+      color: #065f46;
+      border-color: #a7f3d0;
+    }
+
+    .alert.error {
+      background: #fef2f2;
+      color: #991b1b;
+      border-color: #fecaca;
+    }
+
+    .alert .close-alert {
+      border: none;
+      background: transparent;
+      font-size: 18px;
+      line-height: 1;
+      cursor: pointer;
+      color: inherit;
+      opacity: 0.6;
+      transition: opacity 0.2s;
+    }
+
+    .alert .close-alert:hover { opacity: 1; }
+
+    .error-modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(10, 10, 12, 0.55);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 200;
+      padding: 20px;
+    }
+
+    .error-modal.active { display: flex; }
+
+    .error-card {
+      background: #ffffff;
+      border-radius: 18px;
+      padding: 20px 22px;
+      max-width: 420px;
+      width: 100%;
+      box-shadow: 0 22px 46px rgba(0,0,0,0.18);
+      display: grid;
+      gap: 12px;
+    }
+
+    .error-card h3 {
+      margin: 0;
+      font-family: "Fraunces", serif;
+      color: #991b1b;
+      font-size: 18px;
+    }
+
+    .error-card p { margin: 0; color: var(--muted); }
+
+    .error-card .btn {
+      width: fit-content;
+      justify-self: end;
+    }
+
+    /* Forms */
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 20px;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .form-group label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    input, select {
+      width: 100%;
+      padding: 12px 16px;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      font-size: 14px;
+      background: #ffffff;
+      color: var(--ink);
+      transition: border-color 0.2s, box-shadow 0.2s;
+      appearance: none; /* For cleaner select look */
+    }
+
+    input:focus, select:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 4px var(--focus-ring);
+    }
+
+    /* Custom arrow for select if appearance: none is used */
+    select {
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%236e7278' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+      background-size: 16px;
+      padding-right: 40px;
+    }
+
+    input::placeholder { color: #9ca3af; }
+
+    .form-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 16px;
+      margin-top: 8px;
+    }
+
+    .btn {
+      border: none;
+      padding: 12px 24px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, var(--accent) 0%, #163c6e 100%);
+      color: #fff;
+      font-weight: 600;
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      box-shadow: 0 4px 6px rgba(15, 43, 82, 0.2);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      text-decoration: none;
+    }
+
+    .btn:hover {
+      background: linear-gradient(135deg, #0d2750 0%, #0f3567 100%);
+      box-shadow: 0 6px 12px rgba(15, 43, 82, 0.3);
+      transform: translateY(-1px);
+    }
+
+    .btn:active { transform: translateY(0); }
+
+    .btn.secondary {
+      background: transparent;
+      color: var(--muted);
+      border: 1px solid var(--line);
+      box-shadow: none;
+    }
+
+    .btn.secondary:hover {
+      background: #f3f4f6;
+      color: var(--ink);
+      border-color: #cbd5e1;
+    }
+
+    /* Tables */
+    .table-wrap {
+      overflow-x: auto;
+      border-radius: 16px;
+      border: 1px solid var(--line);
+      background: #fff;
+    }
+
+    .table-tools {
+      display: grid;
+      grid-template-columns: minmax(200px, 1fr) repeat(2, minmax(150px, 200px));
+      gap: 16px;
+      align-items: end;
+    }
+
+    .table-tools .form-group {
+      margin: 0;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      min-width: 900px;
+    }
+
+    thead th {
+      text-align: left;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      padding: 16px 24px;
+      background: #f8fafc;
+      color: var(--muted);
+      border-bottom: 1px solid var(--line);
+    }
+
+    tbody tr {
+      transition: background 0.15s ease;
+    }
+
+    tbody tr:hover { background: #f8fafc; }
+
+    tbody td {
+      padding: 16px 24px;
+      border-bottom: 1px solid var(--line);
+      font-size: 14px;
+      color: var(--ink);
+      vertical-align: middle;
+    }
+
+    tbody tr:last-child td { border-bottom: none; }
+
+    .actions-cell { text-align: right; }
+
+    /* Modal Styles */
+    .modal-backdrop {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(10, 10, 12, 0.5);
+      z-index: 200;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+      backdrop-filter: blur(2px);
+      overflow-y: auto;
+    }
+
+    .modal {
+      background: #ffffff;
+      width: 100%;
+      max-width: 600px;
+      border-radius: 20px;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+      overflow: hidden;
+      animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      max-height: calc(100vh - 40px);
+    }
+
+    @keyframes slideUp {
+      from { transform: translateY(20px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+
+    .modal .panel {
+      box-shadow: none;
+      border: none;
+      padding: 32px;
+      margin: 0;
+      max-height: calc(100vh - 40px);
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    @media (max-width: 900px) {
+      .top-inner { flex-wrap: wrap; justify-content: space-between; gap: 12px; }
+      .header-meta { display: none; }
+      .content { padding: 24px; }
+      .form-grid { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 600px) {
+      .top-header { padding: 12px 16px; }
+      .top-inner { flex-direction: column; align-items: flex-start; min-height: auto; }
+      .left-cluster { width: 100%; flex-wrap: wrap; }
+      .site-title-left p { display: none; }
+      .header-meta { width: 100%; text-align: left; }
+      .content { padding: 16px; }
+      .panel { padding: 16px; }
+      .form-actions { flex-direction: column; align-items: stretch; }
+      .btn { width: 100%; }
+      .table-tools { grid-template-columns: 1fr; }
+      .sidebar { width: min(80vw, 300px); }
+      .modal-backdrop { align-items: flex-start; padding: 16px; }
+      .modal { max-height: calc(100vh - 32px); border-radius: 16px; }
+      .modal .panel { padding: 20px; max-height: calc(100vh - 32px); }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header class="top-header">
+      <div class="top-inner">
+        <div class="left-cluster">
+          <button class="nav-btn" type="button" aria-label="Open navigation">
+            <span></span>
+          </button>
+          <div class="brand-logo-and-title">
+            <div class="brand-logo">
+              <img src="{% static 'images/icslis-logo.png' %}" alt="ICSLIS logo" />
+            </div>
+            <div class="site-title-left">
+              <h1>ICSLIS OJT System</h1>
+              <p>Institute of Computing Studies and Library Information Science</p>
+            </div>
+          </div>
+        </div>
+        <div class="header-meta">
+          <span>{% if role == "coordinator" %}Practicum Coordinator{% elif role == "instructor" %}Practicum Instructor{% else %}{{ role|title }}{% endif %}</span>
+          <strong>{{ account.first_name }}{% if account.middle_initial %} {{ account.middle_initial }}.{% endif %} {{ account.last_name }}</strong>
+        </div>
+      </div>
+    </header>
+
+    {% include "partials/staff_sidebar.html" %}
+
+    <main class="content">
+      <section class="panel" id="message_panel">
+        <h2>Manage Accounts</h2>
+        {% if message %}
+        <div class="alert {% if message_type %}{{ message_type }}{% endif %}">
+          <span>{{ message }}</span>
+          <button class="close-alert" type="button" aria-label="Close alert">✕</button>
+        </div>
+        {% endif %}
+      </section>
+
+      <section class="panel">
+        <h2>Add Account</h2>
+        <div class="form-grid" style="margin-bottom: 24px; max-width: 400px;">
+          <div class="form-group">
+            <label>Select Account Type</label>
+            <select id="account_type_selector">
+              <option value="student">Student</option>
+              <option value="instructor">Practicum Instructor</option>
+            </select>
+          </div>
+        </div>
+
+        <form method="post" action="{% url 'manage_accounts' %}" data-ajax="true" id="add_account_form" onsubmit="return handleAjaxSubmit(event, this)">
+          {% csrf_token %}
+          <input type="hidden" name="action" id="account_action" value="add_student" />
+          <div class="form-grid">
+            <div class="form-group student-only">
+              <label>Student No.</label>
+              <input name="student_no" id="id_student_no" placeholder="12-3456" required />
+            </div>
+            <div class="form-group">
+              <label>Email</label>
+              <input name="cca_email" type="email" placeholder="email@cca.edu.ph" required />
+            </div>
+            <div class="form-group">
+              <label>Last Name</label>
+              <input name="last_name" placeholder="Last Name" required />
+            </div>
+            <div class="form-group">
+              <label>First Name</label>
+              <input name="first_name" placeholder="First Name" required />
+            </div>
+            <div class="form-group">
+              <label>Second Name</label>
+              <input name="second_name" placeholder="Optional" />
+            </div>
+            <div class="form-group">
+              <label>Middle Initial</label>
+              <input name="middle_initial" placeholder="M.I." />
+            </div>
+            <div class="form-group student-only">
+              <label>Section</label>
+              <input name="section" id="id_section" placeholder="e.g. 4A" required />
+            </div>
+            <div class="form-group student-only">
+              <label>Program</label>
+              <select name="program" id="id_program" required>
+                <option value="" disabled selected>Select Program</option>
+                <option value="Bachelor of Libary and Information Science">Bachelor of Libary and Information Science</option>
+                <option value="Bachelor of Science in Information Systems">Bachelor of Science in Information Systems</option>
+                <option value="Bachelor of Science in Computer Science">Bachelor of Science in Computer Science</option>
+              </select>
+            </div>
+            <div class="form-group student-only">
+              <label>School Year</label>
+              <select name="school_year" id="id_school_year">
+                <option value="">Select School Year</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-actions">
+            <button class="btn" type="submit" id="add_account_btn">Add Student</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="panel">
+        <h2>Students</h2>
+        <div class="table-tools">
+          <div class="form-group">
+            <label for="student_search">Search Student</label>
+            <input id="student_search" type="search" placeholder="Name, student no, or email" />
+          </div>
+          <div class="form-group">
+            <label for="section_filter">Filter by Section</label>
+            <select id="section_filter">
+              <option value="">All Sections</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="school_year_filter">Filter by School Year</label>
+            <select id="school_year_filter">
+              <option value="">All School Years</option>
+            </select>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Student No.</th>
+                <th>Name</th>
+                <th>Section</th>
+                <th>Program</th>
+                <th>School Year</th>
+                <th>Email</th>
+                <th>Status</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="students_tbody">
+              {% for s in students %}
+              <tr data-student-id="{{ s.id }}"
+                  data-student-section="{{ s.section|default_if_none:'' }}"
+                  data-student-school-year="{{ s.school_year|default_if_none:'' }}"
+                  data-student-search="{{ s.student_no }} {{ s.cca_email }} {{ s.last_name }} {{ s.first_name }} {{ s.second_name|default_if_none:'' }} {{ s.middle_initial|default_if_none:'' }} {{ s.section }} {{ s.program }} {{ s.school_year|default_if_none:'' }}">
+                <td>{{ s.student_no }}</td>
+                <td>{{ s.first_name }}{% if s.middle_initial %} {{ s.middle_initial }}.{% endif %} {{ s.last_name }}</td>
+                <td>{{ s.section }}</td>
+                <td>{{ s.program }}</td>
+                <td>{{ s.school_year }}</td>
+                <td>{{ s.cca_email }}</td>
+                <td>{{ s.active_status|yesno:"Active,Inactive" }}</td>
+                <td>
+                  <a class="btn secondary" href="?edit_type=student&edit_id={{ s.id }}">Edit</a>
+                </td>
+              </tr>
+              {% empty %}
+              <tr class="students-empty"><td colspan="8">No students found.</td></tr>
+              {% endfor %}
+              {% if students %}
+              <tr class="students-empty" style="display:none;"><td colspan="8">No matching students.</td></tr>
+              {% endif %}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Practicum Instructors</h2>
+        <div class="table-tools">
+          <div class="form-group">
+            <label for="instructor_search">Search Instructor</label>
+            <input id="instructor_search" type="search" placeholder="Name or email" />
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Status</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="instructors_tbody">
+              {% for i in instructors %}
+              <tr data-instructor-id="{{ i.id }}"
+                  data-instructor-search="{{ i.cca_email }} {{ i.last_name }} {{ i.first_name }} {{ i.second_name|default_if_none:'' }} {{ i.middle_initial|default_if_none:'' }}">
+                <td>{{ i.first_name }}{% if i.middle_initial %} {{ i.middle_initial }}.{% endif %} {{ i.last_name }}</td>
+                <td>{{ i.cca_email }}</td>
+                <td>{{ i.active_status|yesno:"Active,Inactive" }}</td>
+                <td><a class="btn secondary" href="?edit_type=instructor&edit_id={{ i.id }}">Edit</a></td>
+              </tr>
+              {% empty %}
+              <tr class="instructors-empty"><td colspan="4">No instructors found.</td></tr>
+              {% endfor %}
+              {% if instructors %}
+              <tr class="instructors-empty" style="display:none;"><td colspan="4">No matching instructors.</td></tr>
+              {% endif %}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      {% if edit_type and edit_record %}
+      <div class="modal-backdrop active" id="edit_modal">
+        <div class="modal">
+          <section class="panel">
+            <h2>Edit {{ edit_type|title }}</h2>
+            <form method="post" action="{% url 'manage_accounts' %}" data-ajax="true" id="edit_form" onsubmit="return handleAjaxSubmit(event, this)">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="{% if edit_type == 'student' %}update_student{% else %}update_instructor{% endif %}" />
+              <input type="hidden" name="id" value="{{ edit_record.id }}" />
+              <div class="form-grid">
+                {% if edit_type == 'student' %}
+                  <div class="form-group">
+                    <label>Student No.</label>
+                    <input name="student_no" value="{{ edit_record.student_no }}" placeholder="12-3456" required />
+                  </div>
+                  <div class="form-group">
+                    <label>Email</label>
+                    <input name="cca_email" type="email" value="{{ edit_record.cca_email }}" placeholder="Email" required />
+                  </div>
+                  <div class="form-group">
+                    <label>Last Name</label>
+                    <input name="last_name" value="{{ edit_record.last_name }}" placeholder="Last Name" required />
+                  </div>
+                  <div class="form-group">
+                    <label>First Name</label>
+                    <input name="first_name" value="{{ edit_record.first_name }}" placeholder="First Name" required />
+                  </div>
+                  <div class="form-group">
+                    <label>Second Name</label>
+                    <input name="second_name" value="{{ edit_record.second_name|default_if_none:'' }}" placeholder="Second Name (optional)" />
+                  </div>
+                  <div class="form-group">
+                    <label>Middle Initial</label>
+                    <input name="middle_initial" value="{{ edit_record.middle_initial|default_if_none:'' }}" placeholder="Middle Initial" />
+                  </div>
+                  <div class="form-group">
+                    <label>Section</label>
+                    <input name="section" value="{{ edit_record.section }}" placeholder="Section" required />
+                  </div>
+                  <div class="form-group">
+                    <label>Program</label>
+                    <select name="program" required>
+                      <option value="Bachelor of Libary and Information Science" {% if edit_record.program == "Bachelor of Libary and Information Science" %}selected{% endif %}>Bachelor of Libary and Information Science</option>
+                      <option value="Bachelor of Science in Information Systems" {% if edit_record.program == "Bachelor of Science in Information Systems" %}selected{% endif %}>Bachelor of Science in Information Systems</option>
+                      <option value="Bachelor of Science in Computer Science" {% if edit_record.program == "Bachelor of Science in Computer Science" %}selected{% endif %}>Bachelor of Science in Computer Science</option>
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label>School Year</label>
+                    <select name="school_year" id="edit_school_year">
+                      <option value="">Select School Year</option>
+                      {% if edit_record.school_year %}
+                      <option value="{{ edit_record.school_year }}" selected>{{ edit_record.school_year }}</option>
+                      {% endif %}
+                    </select>
+                  </div>
+                {% else %}
+                  <div class="form-group">
+                    <label>Email</label>
+                    <input name="cca_email" type="email" value="{{ edit_record.cca_email }}" placeholder="Email" required />
+                  </div>
+                  <div class="form-group">
+                    <label>Last Name</label>
+                    <input name="last_name" value="{{ edit_record.last_name }}" placeholder="Last Name" required />
+                  </div>
+                  <div class="form-group">
+                    <label>First Name</label>
+                    <input name="first_name" value="{{ edit_record.first_name }}" placeholder="First Name" required />
+                  </div>
+                  <div class="form-group">
+                    <label>Second Name</label>
+                    <input name="second_name" value="{{ edit_record.second_name|default_if_none:'' }}" placeholder="Second Name (optional)" />
+                  </div>
+                  <div class="form-group">
+                    <label>Middle Initial</label>
+                    <input name="middle_initial" value="{{ edit_record.middle_initial|default_if_none:'' }}" placeholder="Middle Initial" />
+                  </div>
+                {% endif %}
+              </div>
+          <div class="form-actions">
+            <button class="btn secondary" type="button" id="close_edit_modal">Cancel</button>
+            <button class="btn" type="button" id="save_edit_btn">Save Changes</button>
+          </div>
+        </form>
+      </section>
+    </div>
+  </div>
+      {% endif %}
+    </main>
+  </div>
+  {% if message and message_type == "error" %}
+  <div class="error-modal active" id="error_modal">
+    <div class="error-card">
+      <h3>Account Already Exists</h3>
+      <p>{{ message }}</p>
+      <button class="btn" type="button" id="close_error_modal">Okay</button>
+    </div>
+  </div>
+  {% endif %}
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const populateSchoolYears = (selectorId, currentValue) => {
+        const select = document.getElementById(selectorId);
+        if (!select) return;
+        
+        const now = new Date();
+        const currentYear = now.getFullYear();
+        // If we are before July, the current school year started last year (e.g., Feb 2026 is SY 2025-2026)
+        const effectiveCurrentYear = now.getMonth() < 6 ? currentYear - 1 : currentYear;
+        
+        const BASE_YEAR = 2025; // The list will always start here
+        const FUTURE_BUFFER = 2; // Always show this many years ahead of the current date
+        
+        const years = [];
+        
+        // Start from BASE_YEAR and go up to current + buffer
+        // We use Math.max to ensure we don't break if system time is somehow before 2025
+        const endYear = Math.max(BASE_YEAR, effectiveCurrentYear + FUTURE_BUFFER);
+
+        for (let y = BASE_YEAR; y <= endYear; y++) {
+          const range = `${y} - ${y + 1}`;
+          years.push(range);
+        }
+
+        // Keep current value if it's somehow outside our logic (e.g. very old legacy data)
+        if (currentValue && !years.includes(currentValue)) {
+          years.unshift(currentValue);
+        }
+
+        // Clear existing options except the first one (placeholder)
+        const placeholder = select.options[0];
+        select.innerHTML = '';
+        select.appendChild(placeholder);
+
+        years.forEach(year => {
+          const option = document.createElement('option');
+          option.value = year;
+          option.textContent = year;
+          if (year === currentValue) option.selected = true;
+          select.appendChild(option);
+        });
+      };
+
+      populateSchoolYears('id_school_year');
+      const editSelect = document.getElementById('edit_school_year');
+      if (editSelect) {
+        const existingVal = editSelect.getAttribute('data-existing-val') || editSelect.value;
+        populateSchoolYears('edit_school_year', existingVal);
+      }
+
+      const navBtn = document.querySelector('.nav-btn');
+      const closeBtn = document.querySelector('.close-btn');
+      const backdrop = document.querySelector('.sidebar-backdrop');
+      const body = document.body;
+
+      function openSidebar() { body.classList.add('sidebar-open'); }
+      function closeSidebar() { body.classList.remove('sidebar-open'); }
+
+      if (navBtn) navBtn.addEventListener('click', openSidebar);
+      if (closeBtn) closeBtn.addEventListener('click', closeSidebar);
+      if (backdrop) backdrop.addEventListener('click', closeSidebar);
+
+      const typeSelector = document.getElementById('account_type_selector');
+      const accountAction = document.getElementById('account_action');
+      const addAccountBtn = document.getElementById('add_account_btn');
+      const studentOnlyFields = document.querySelectorAll('.student-only');
+
+      if (typeSelector) {
+        typeSelector.addEventListener('change', function() {
+          const isStudent = this.value === 'student';
+          accountAction.value = isStudent ? 'add_student' : 'add_instructor';
+          addAccountBtn.textContent = isStudent ? 'Add Student' : 'Add Instructor';
+          
+          studentOnlyFields.forEach(field => {
+            field.style.display = isStudent ? '' : 'none';
+            const input = field.querySelector('input, select');
+            if (input) {
+              if (isStudent) {
+                if (input.name === 'student_no' || input.name === 'section' || input.name === 'program') {
+                  input.setAttribute('required', '');
+                }
+              } else {
+                input.removeAttribute('required');
+              }
+            }
+          });
+        });
+      }
+    });
+
+    document.addEventListener("click", (event) => {
+      const closeBtn = event.target.closest(".close-alert");
+      if (closeBtn) {
+        const alert = closeBtn.closest(".alert");
+        if (alert) {
+          alert.remove();
+        }
+      }
+    });
+
+    const errorModal = document.getElementById("error_modal");
+    const closeErrorModal = document.getElementById("close_error_modal");
+    if (errorModal && closeErrorModal) {
+      closeErrorModal.addEventListener("click", () => {
+        errorModal.remove();
+      });
+      errorModal.addEventListener("click", (e) => {
+        if (e.target === errorModal) {
+          errorModal.remove();
+        }
+      });
+    }
+
+    const csrfToken = document.querySelector('input[name="csrfmiddlewaretoken"]')?.value || '';
+    const messagePanel = document.getElementById('message_panel');
+
+    const showAlert = (text, type) => {
+      const alert = document.createElement('div');
+      alert.className = `alert ${type || ''}`;
+      alert.innerHTML = `<span>${text}</span><button class="close-alert" type="button" aria-label="Close alert">✕</button>`;
+      messagePanel?.appendChild(alert);
+    };
+
+    const dismissEditModal = () => {
+      const modal = document.getElementById('edit_modal');
+      if (modal) {
+        modal.remove();
+      }
+      const url = new URL(window.location.href);
+      url.searchParams.delete('edit_type');
+      url.searchParams.delete('edit_id');
+      window.history.replaceState({}, '', url.toString());
+    };
+
+    const applyStudentFilters = () => {
+      const searchInput = document.getElementById('student_search');
+      const sectionSelect = document.getElementById('section_filter');
+      const sySelect = document.getElementById('school_year_filter');
+      
+      const query = (searchInput?.value || '').trim().toLowerCase();
+      const sectionValue = (sectionSelect?.value || '').trim().toLowerCase();
+      const syValue = (sySelect?.value || '').trim().toLowerCase();
+
+      const rows = Array.from(document.querySelectorAll('#students_tbody tr[data-student-id]'));
+      let visibleCount = 0;
+
+      rows.forEach((row) => {
+        const searchText = (row.dataset.studentSearch || '').toLowerCase();
+        const sectionText = (row.dataset.studentSection || '').toLowerCase();
+        const syText = (row.dataset.studentSchoolYear || '').toLowerCase();
+        
+        const matchesSearch = !query || searchText.includes(query);
+        const matchesSection = !sectionValue || sectionText === sectionValue;
+        const matchesSy = !syValue || syText === syValue;
+        
+        const shouldShow = matchesSearch && matchesSection && matchesSy;
+        row.style.display = shouldShow ? '' : 'none';
+        if (shouldShow) visibleCount += 1;
+      });
+
+      const emptyRow = document.querySelector('#students_tbody .students-empty');
+      if (emptyRow) {
+        emptyRow.style.display = visibleCount === 0 ? '' : 'none';
+        emptyRow.textContent = query || sectionValue || syValue ? 'No matching students.' : 'No students found.';
+      }
+    };
+
+    const refreshFilterOptions = () => {
+      // Refresh Section Options
+      const sectionSelect = document.getElementById('section_filter');
+      if (sectionSelect) {
+        const currentVal = sectionSelect.value;
+        const sections = Array.from(document.querySelectorAll('#students_tbody tr[data-student-id]'))
+          .map((row) => (row.dataset.studentSection || '').trim())
+          .filter((value) => value.length > 0);
+        const uniqueSections = Array.from(new Set(sections)).sort((a, b) => a.localeCompare(b));
+
+        sectionSelect.innerHTML = '<option value="">All Sections</option>';
+        uniqueSections.forEach((section) => {
+          const option = document.createElement('option');
+          option.value = section;
+          option.textContent = section;
+          sectionSelect.appendChild(option);
+        });
+        sectionSelect.value = currentVal;
+      }
+
+      // Refresh School Year Options
+      const sySelect = document.getElementById('school_year_filter');
+      if (sySelect) {
+        const currentVal = sySelect.value;
+        
+        // 1. Get years present in the table
+        const tableYears = Array.from(document.querySelectorAll('#students_tbody tr[data-student-id]'))
+          .map((row) => (row.dataset.studentSchoolYear || '').trim())
+          .filter((value) => value.length > 0);
+
+        // 2. Generate standard range (Same logic as populateSchoolYears)
+        const now = new Date();
+        const currentYear = now.getFullYear();
+        // If we are before July, the current school year started last year
+        const effectiveCurrentYear = now.getMonth() < 6 ? currentYear - 1 : currentYear;
+        const BASE_YEAR = 2025;
+        const FUTURE_BUFFER = 2;
+        const endYear = Math.max(BASE_YEAR, effectiveCurrentYear + FUTURE_BUFFER);
+        
+        const generatedYears = [];
+        for (let y = BASE_YEAR; y <= endYear; y++) {
+          generatedYears.push(`${y} - ${y + 1}`);
+        }
+
+        // 3. Merge and Sort
+        const allYears = new Set([...tableYears, ...generatedYears]);
+        // Sort descending (newest first)
+        const uniqueYears = Array.from(allYears).sort().reverse();
+
+        sySelect.innerHTML = '<option value="">All School Years</option>';
+        uniqueYears.forEach((year) => {
+          const option = document.createElement('option');
+          option.value = year;
+          option.textContent = year;
+          sySelect.appendChild(option);
+        });
+        sySelect.value = currentVal;
+      }
+    };
+
+    const applyInstructorFilter = () => {
+      const searchInput = document.getElementById('instructor_search');
+      const query = (searchInput?.value || '').trim().toLowerCase();
+      const rows = Array.from(document.querySelectorAll('#instructors_tbody tr[data-instructor-id]'));
+      let visibleCount = 0;
+
+      rows.forEach((row) => {
+        const searchText = (row.dataset.instructorSearch || '').toLowerCase();
+        const shouldShow = !query || searchText.includes(query);
+        row.style.display = shouldShow ? '' : 'none';
+        if (shouldShow) visibleCount += 1;
+      });
+
+      const emptyRow = document.querySelector('#instructors_tbody .instructors-empty');
+      if (emptyRow) {
+        emptyRow.style.display = visibleCount === 0 ? '' : 'none';
+        emptyRow.textContent = query ? 'No matching instructors.' : 'No instructors found.';
+      }
+    };
+
+    const ajaxSubmit = async (form) => {
+      const formData = new FormData(form);
+      const actionUrl = form.getAttribute('action') || window.location.href;
+      const response = await fetch(actionUrl, {
+        method: 'POST',
+        headers: { 'X-Requested-With': 'XMLHttpRequest', 'X-CSRFToken': csrfToken },
+        body: formData,
+      });
+
+      const data = await response.json().catch(() => null);
+      if (!response.ok || !data || !data.ok) {
+        showAlert(data?.message || 'Something went wrong. Please try again.', 'error');
+        return;
+      }
+
+      if (data.type === 'student') {
+        const tbody = document.getElementById('students_tbody');
+        if (tbody) {
+          const mi = data.record.middle_initial ? ` ${data.record.middle_initial}.` : '';
+          const existing = document.querySelector(`tr[data-student-id="${data.record.id}"]`);
+          if (existing) {
+            existing.innerHTML = `
+              <td>${data.record.student_no}</td>
+              <td>${data.record.first_name}${mi} ${data.record.last_name}</td>
+              <td>${data.record.section}</td>
+              <td>${data.record.program}</td>
+              <td>${data.record.school_year || ''}</td>
+              <td>${data.record.cca_email}</td>
+              <td>${data.record.active_status ? 'Active' : 'Inactive'}</td>
+              <td><a class="btn secondary" href="?edit_type=student&edit_id=${data.record.id}">Edit</a></td>
+            `;
+            existing.dataset.studentSection = data.record.section || '';
+            existing.dataset.studentSchoolYear = data.record.school_year || '';
+            existing.dataset.studentSearch = `${data.record.student_no} ${data.record.cca_email} ${data.record.last_name} ${data.record.first_name} ${data.record.second_name || ''} ${data.record.middle_initial || ''} ${data.record.section} ${data.record.program} ${data.record.school_year || ''}`;
+          } else {
+            const row = document.createElement('tr');
+            row.setAttribute('data-student-id', data.record.id);
+            row.dataset.studentSection = data.record.section || '';
+            row.dataset.studentSchoolYear = data.record.school_year || '';
+            row.dataset.studentSearch = `${data.record.student_no} ${data.record.cca_email} ${data.record.last_name} ${data.record.first_name} ${data.record.second_name || ''} ${data.record.middle_initial || ''} ${data.record.section} ${data.record.program} ${data.record.school_year || ''}`;
+            row.innerHTML = `
+              <td>${data.record.student_no}</td>
+              <td>${data.record.first_name}${mi} ${data.record.last_name}</td>
+              <td>${data.record.section}</td>
+              <td>${data.record.program}</td>
+              <td>${data.record.school_year || ''}</td>
+              <td>${data.record.cca_email}</td>
+              <td>${data.record.active_status ? 'Active' : 'Inactive'}</td>
+              <td><a class="btn secondary" href="?edit_type=student&edit_id=${data.record.id}">Edit</a></td>
+            `;
+            tbody.prepend(row);
+          }
+        }
+        const studentMsg = data.mode === 'update' ? 'Student account updated.' : 'Student account added.';
+        showAlert(studentMsg, 'success');
+        refreshFilterOptions();
+        applyStudentFilters();
+      }
+
+      if (data.type === 'instructor') {
+        const tbody = document.getElementById('instructors_tbody');
+        if (tbody) {
+          const mi = data.record.middle_initial ? ` ${data.record.middle_initial}.` : '';
+          const existing = document.querySelector(`tr[data-instructor-id="${data.record.id}"]`);
+          if (existing) {
+            existing.innerHTML = `
+              <td>${data.record.first_name}${mi} ${data.record.last_name}</td>
+              <td>${data.record.cca_email}</td>
+              <td>${data.record.active_status ? 'Active' : 'Inactive'}</td>
+              <td><a class="btn secondary" href="?edit_type=instructor&edit_id=${data.record.id}">Edit</a></td>
+            `;
+            existing.dataset.instructorSearch = `${data.record.cca_email} ${data.record.last_name} ${data.record.first_name} ${data.record.second_name || ''} ${data.record.middle_initial || ''}`;
+          } else {
+            const row = document.createElement('tr');
+            row.setAttribute('data-instructor-id', data.record.id);
+            row.dataset.instructorSearch = `${data.record.cca_email} ${data.record.last_name} ${data.record.first_name} ${data.record.second_name || ''} ${data.record.middle_initial || ''}`;
+            row.innerHTML = `
+              <td>${data.record.first_name}${mi} ${data.record.last_name}</td>
+              <td>${data.record.cca_email}</td>
+              <td>${data.record.active_status ? 'Active' : 'Inactive'}</td>
+              <td><a class="btn secondary" href="?edit_type=instructor&edit_id=${data.record.id}">Edit</a></td>
+            `;
+            tbody.prepend(row);
+          }
+        }
+        const instructorMsg = data.mode === 'update' ? 'Instructor account updated.' : 'Instructor account added.';
+        showAlert(instructorMsg, 'success');
+        applyInstructorFilter();
+      }
+
+      if (form.id === 'edit_form' || data.mode === 'update') {
+        dismissEditModal();
+      } else {
+        form.reset();
+      }
+    };
+
+    window.handleAjaxSubmit = (e, formEl) => {
+      e.preventDefault();
+      let form = formEl && formEl.tagName === 'FORM' ? formEl : e.target.closest('form');
+      if (formEl && formEl.tagName !== 'FORM') {
+        form = formEl.closest('form') || form;
+      }
+      if (form) {
+        ajaxSubmit(form);
+      }
+      return false;
+    };
+
+    const bindEditModal = () => {
+      const editModal = document.getElementById('edit_modal');
+      const closeEditModalBtn = document.getElementById('close_edit_modal');
+      const saveEditBtn = document.getElementById('save_edit_btn');
+      const editForm = document.getElementById('edit_form');
+
+      if (saveEditBtn && editForm) {
+        saveEditBtn.addEventListener('click', () => {
+          ajaxSubmit(editForm);
+        });
+      }
+
+      if (editModal && closeEditModalBtn) {
+        closeEditModalBtn.addEventListener('click', dismissEditModal);
+        editModal.addEventListener('click', (e) => {
+          if (e.target === editModal) {
+            closeEditModalBtn.click();
+          }
+        });
+        document.addEventListener('keydown', (event) => {
+          if (event.key === 'Escape' && editModal.classList.contains('active')) {
+            dismissEditModal();
+          }
+        });
+      }
+    };
+
+    const loadEditModal = async (url) => {
+      const response = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+      if (!response.ok) return;
+      const html = await response.text();
+      const temp = document.createElement('div');
+      temp.innerHTML = html;
+      const newModal = temp.querySelector('#edit_modal');
+      if (!newModal) return;
+      const existing = document.getElementById('edit_modal');
+      if (existing) {
+        existing.remove();
+      }
+      document.body.appendChild(newModal);
+      const incoming = new URL(url, window.location.origin);
+      const newUrl = new URL(window.location.href);
+      const editType = incoming.searchParams.get('edit_type') || '';
+      const editId = incoming.searchParams.get('edit_id') || '';
+      if (editType && editId) {
+        newUrl.searchParams.set('edit_type', editType);
+        newUrl.searchParams.set('edit_id', editId);
+      }
+      window.history.replaceState({}, '', newUrl.toString());
+      bindEditModal();
+    };
+
+    const studentSearch = document.getElementById('student_search');
+    const sectionFilter = document.getElementById('section_filter');
+    const syFilter = document.getElementById('school_year_filter');
+    if (studentSearch) {
+      studentSearch.addEventListener('input', applyStudentFilters);
+    }
+    if (sectionFilter) {
+      sectionFilter.addEventListener('change', applyStudentFilters);
+    }
+    if (syFilter) {
+      syFilter.addEventListener('change', applyStudentFilters);
+    }
+    const instructorSearch = document.getElementById('instructor_search');
+    if (instructorSearch) {
+      instructorSearch.addEventListener('input', applyInstructorFilter);
+    }
+    refreshFilterOptions();
+    applyStudentFilters();
+    applyInstructorFilter();
+    bindEditModal();
+    document.addEventListener('click', (event) => {
+      const editLink = event.target.closest('a.btn.secondary[href*="edit_type="]');
+      if (!editLink) return;
+      event.preventDefault();
+      loadEditModal(editLink.getAttribute('href'));
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,196 @@
+users
+
+OJTSystem2026
+email app password: tzcw jtzv qdzv hnln
+
+
+student
+cca_email
+last_name
+first_name
+second_name(optional)
+middle_initial
+student_no
+program
+section
+password
+activation_code
+recovery_code
+active_status()
+
+
+Practicum Coordinator
+cca_email
+last_name
+first_name
+second_name(optional)
+last name
+password
+activation_code
+recovery_code
+active_status()
+
+
+Practicum Instructor
+cca_email
+last_name
+first_name
+second_name(optional)
+last name
+password
+activation_code
+recovery_code
+active_status()
+
+
+ student_id
+ last name
+ first name
+ second name(optional)
+ middle initial
+ student_no
+ section
+ program
+ school_year
+
+Form 1 Practicum Application
+Form 2 Letter of Intent
+Form 3 Endorsement Letter
+Form 4 Practicum Parental Consent
+Form 5 Acceptance Form 
+Form 6 Reply Form
+Form 7 Practicum Training Agreement
+Form 8 Attendance Sheet
+Form 9 Weekly Journal
+Form 10 Transmittal Form 
+Form 11 Evaluation Form
+Form 12 Outreach Program Design
+Form 13 Outreach Post-Activity Report
+Form 14 OJT Log Sheet
+Form 15 Requirements Check List 
+Final Requirement CCA Hymn
+
+
+
+in Check requirements modal, include also the section
+
+monthly attendance sheet
+will show cell following how many weeks are in their per month
+this will be base on what day are their submission day. for example the submission is every monday the table cell will show all the monday of the month and it will be label for 1st week 2nd week 3rd week etc
+it should be January to June it will show January to June but the system will check what is the current month and that is the one will be shown but the past month will still be shown
+then their is check box in the cell per week of the day of submission base on their schedule 
+
+Submission Schedule Plotter will be create another table where  section and submission day will be
+it is deletable
+
+then create a new scheme for the monthly attendance sheet, it will be sync also in this
+it will just like the Student Requirement, but this is another,
+this will include in-time and late submission
+their is a trigger also than when the user clicked a check box it will day-log the day time month year
+they the in-time and late submission will trigger base on the day-log of the user if its in-time or they submit late
+example if monday is submission and you submit in monday you are in-time
+if monday is submission and you submit in tuesday you are late submission 
+
+
+
+-- Student Requirements
+create table if not exists student_requirements (
+  id uuid primary key default gen_random_uuid(),
+  student_id uuid references students(id) on delete cascade,
+  last_name text not null,
+  first_name text not null,
+  second_name text,
+  middle_initial text,
+  student_no text not null,
+  section text not null,
+  program text not null,
+  school_year text check (school_year ~ '^[0-9]{4} - [0-9]{4}$'),
+  practicum_application boolean not null default false,
+  letter_of_intent boolean not null default false,
+  endorsement_letter boolean not null default false,
+  practicum_parental_consent boolean not null default false,
+  acceptance_form boolean not null default false,
+  reply_form boolean not null default false,
+  practicum_training_agreement boolean not null default false,
+  attendance_sheet boolean not null default false,
+  weekly_journal boolean not null default false,
+  transmittal_form boolean not null default false,
+  evaluation_form boolean not null default false,
+  outreach_program_design boolean not null default false,
+  outreach_post_activity_report boolean not null default false,
+  ojt_log_sheet boolean not null default false,
+  requirements_checklist boolean not null default false,
+  cca_hymn boolean not null default false
+);
+
+create index if not exists student_requirements_student_id_idx on student_requirements (student_id);
+create index if not exists student_requirements_student_no_idx on student_requirements (student_no);
+
+-- Prevent duplicate rows per student
+create unique index if not exists student_requirements_student_id_uidx on student_requirements (student_id);
+
+-- Sync from students table without duplicating
+create or replace function sync_student_requirements()
+returns void
+language plpgsql
+as $$
+begin
+  insert into student_requirements (
+    student_id,
+    last_name,
+    first_name,
+    second_name,
+    middle_initial,
+    student_no,
+    section,
+    program,
+    school_year
+  )
+  select
+    s.id,
+    s.last_name,
+    s.first_name,
+    s.second_name,
+    s.middle_initial,
+    s.student_no,
+    s.section,
+    s.program,
+    s.school_year
+  from students s
+  on conflict (student_id) do update
+  set
+    last_name = excluded.last_name,
+    first_name = excluded.first_name,
+    second_name = excluded.second_name,
+    middle_initial = excluded.middle_initial,
+    student_no = excluded.student_no,
+    section = excluded.section,
+    program = excluded.program,
+    school_year = excluded.school_year;
+end;
+$$;
+
+
+Create a another table in @staff_sideback named Company Checklist
+then create a another page for Company Checklist (named also Company Checklist)
+the company checklist has a table 
+it should have 
+
+Company List		For City resolution			For Company Signing		Forward to Office of the President		Processed and Notarized	
+
+and then for company checklist in the table cell, the user can add company name in text box format maybe(it should also be editable)
+beside it has a function of Check Box	Passed at	Approve/Pending	Returned in
+when the user click the check box it will show a check icon and the passed at will automatically show a Month Day Year, Time
+the approved/pending is, when the check box is click it will automatically show a pending(it should been highlighted with gold)
+but when the user change it into approved(this should be also have a high light of green) the date beside it in the right should also ow a Month Day Year, Time 
+
+
+for  For Company Signing it has a function of check box	date just the same in above when the user click the check box it will show a check icon  and automatically show a Month Day Year, Time
+
+same here at Forward to Office of the President
+
+also here in Processed and Notarized
+ 
+
+ 
+

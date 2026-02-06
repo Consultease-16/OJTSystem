@@ -1,0 +1,1036 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ICSLIS OJT System | Company Checklist</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@400;600;700&family=Work+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ink: #0a0a0c;
+      --paper: #f6f7f9;
+      --accent: #0f2b52;
+      --accent-2: #d9b65a;
+      --muted: #6e7278;
+      --card: #ffffff;
+      --line: #e2e8f0;
+      --shadow: 0 14px 28px rgba(0, 0, 0, 0.08);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "Work Sans", system-ui, -apple-system, sans-serif;
+      color: var(--ink);
+      background: #f8f9fc;
+      min-height: 100vh;
+    }
+
+    .top-header {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      background: linear-gradient(160deg, rgba(15, 43, 82, 0.98), rgba(10, 10, 12, 0.98));
+      color: #f4f6f9;
+      padding: 16px 28px;
+      box-shadow: 0 18px 36px rgba(8, 10, 18, 0.25);
+    }
+
+    .top-inner {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      min-height: 96px;
+    }
+
+    .left-cluster {
+      display: inline-flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .nav-btn {
+      width: 46px;
+      height: 46px;
+      border-radius: 16px;
+      border: 1px solid rgba(217, 182, 90, 0.6);
+      background: rgba(15, 43, 82, 0.45);
+      color: #f4f6f9;
+      display: grid;
+      place-items: center;
+      cursor: pointer;
+    }
+
+    .nav-btn span,
+    .nav-btn span::before,
+    .nav-btn span::after {
+      content: "";
+      display: block;
+      width: 18px;
+      height: 2px;
+      background: currentColor;
+      border-radius: 999px;
+    }
+
+    .nav-btn span::before { transform: translateY(-6px); }
+    .nav-btn span::after { transform: translateY(4px); }
+
+    .brand-logo-and-title {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-logo {
+      width: 46px;
+      height: 46px;
+      border-radius: 14px;
+      overflow: hidden;
+      border: 2px solid rgba(217, 182, 90, 0.85);
+      box-shadow: 0 0 0 4px rgba(217, 182, 90, 0.18);
+    }
+
+    .brand-logo img { width: 100%; height: 100%; object-fit: cover; }
+
+    .site-title-left h1 {
+      margin: 0;
+      font-family: "Fraunces", serif;
+      font-size: clamp(22px, 2.6vw, 30px);
+    }
+
+    .site-title-left p {
+      margin: 0;
+      font-size: 13px;
+      color: rgba(244, 246, 249, 0.75);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .header-meta { text-align: right; font-size: 12px; color: rgba(244, 246, 249, 0.7); }
+    .header-meta strong { font-size: 14px; color: #f4f6f9; display: block; margin-top: 4px; }
+
+    .sidebar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 260px;
+      height: 100%;
+      background: #fff;
+      box-shadow: 8px 0 22px rgba(8, 9, 12, 0.18);
+      padding: 24px;
+      z-index: 100;
+      transform: translateX(-100%);
+      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .sidebar-open .sidebar { transform: translateX(0); }
+
+    .sidebar-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 24px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .sidebar-header h3 {
+      margin: 0;
+      font-size: 18px;
+      font-family: "Fraunces", serif;
+      color: var(--accent);
+    }
+
+    .close-btn {
+      border: none;
+      background: transparent;
+      font-size: 24px;
+      cursor: pointer;
+      color: var(--muted);
+    }
+
+    .sidebar-nav {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: grid;
+      gap: 8px;
+    }
+
+    .sidebar-nav a {
+      display: flex;
+      align-items: center;
+      text-decoration: none;
+      color: var(--ink);
+      font-weight: 500;
+      padding: 12px 16px;
+      border-radius: 12px;
+      transition: all 0.2s ease;
+    }
+
+    .sidebar-nav a:hover {
+      background: #f0f4f8;
+      color: var(--accent);
+      transform: translateX(4px);
+    }
+
+    .sidebar-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(10, 10, 12, 0.4);
+      backdrop-filter: blur(2px);
+      z-index: 99;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.3s ease, visibility 0.3s ease;
+    }
+
+    .sidebar-open .sidebar-backdrop { opacity: 1; visibility: visible; }
+
+    .content {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 40px 24px 60px;
+      display: grid;
+      gap: 24px;
+    }
+
+    .panel {
+      background: var(--card);
+      border-radius: 20px;
+      padding: 32px;
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow);
+    }
+
+    .panel h2 {
+      margin: 0 0 20px;
+      font-family: "Fraunces", serif;
+      color: var(--accent);
+      font-size: clamp(24px, 2.5vw, 32px);
+    }
+
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 24px;
+      justify-content: space-between;
+      flex-wrap: wrap;
+    }
+
+    .toolbar-note {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .toolbar-search {
+      width: min(360px, 100%);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-size: 14px;
+      color: var(--ink);
+      background: #fff;
+    }
+
+    .toolbar-search:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(15, 43, 82, 0.1);
+    }
+
+    .btn {
+      border: none;
+      border-radius: 12px;
+      padding: 10px 20px;
+      font-weight: 600;
+      font-size: 14px;
+      cursor: pointer;
+      color: #fff;
+      background: linear-gradient(135deg, var(--accent) 0%, #123e77 100%);
+      box-shadow: 0 4px 12px rgba(15, 43, 82, 0.15);
+      transition: all 0.2s ease;
+    }
+
+    .btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 16px rgba(15, 43, 82, 0.2);
+    }
+
+    /* Table & List Styling */
+    .table-wrap {
+      width: 100%;
+      overflow-x: hidden;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: #fff;
+    }
+
+    table {
+      width: 100%;
+      table-layout: fixed;
+      border-collapse: separate;
+      border-spacing: 0;
+      min-width: 0;
+    }
+
+    th {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      background: #f8fafc;
+      padding: 14px 16px;
+      text-align: left;
+      font-weight: 700;
+      border-bottom: 1px solid var(--line);
+      white-space: normal;
+      overflow-wrap: anywhere;
+    }
+
+    td {
+      padding: 14px 16px;
+      vertical-align: middle;
+      border-bottom: 1px solid var(--line);
+      background: #fff;
+      transition: background 0.2s ease;
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    tr:hover td {
+      background: #fbfcfe;
+    }
+
+    /* Column Widths */
+    th:nth-child(1), td:nth-child(1) { width: 20%; }
+    th:nth-child(2), td:nth-child(2) { width: 16%; }
+    th:nth-child(3), td:nth-child(3) { width: 16%; }
+    th:nth-child(4), td:nth-child(4) { width: 20%; }
+    th:nth-child(5), td:nth-child(5) { width: 18%; }
+    th:nth-child(6), td:nth-child(6) { width: 10%; }
+
+    .company-cell {
+      min-height: 158px;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding-top: 4px;
+    }
+
+    /* Form Elements */
+    td input[type="text"] {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-size: 14px;
+      color: var(--ink);
+      background: #fff;
+      transition: all 0.2s ease;
+    }
+
+    td input[type="text"]:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(15, 43, 82, 0.1);
+    }
+
+    .stage-cell {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      min-width: 0;
+      min-height: 158px;
+      padding: 10px;
+      border: 1px solid #e8edf5;
+      border-radius: 12px;
+      background: linear-gradient(180deg, #fff 0%, #fbfdff 100%);
+    }
+
+    .stage-top {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .stage-top input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+
+    .stage-top span {
+      font-weight: 600;
+      font-size: 13px;
+      color: var(--ink);
+      overflow-wrap: anywhere;
+    }
+
+    .check-icon {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #ecfdf5;
+      color: #059669;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.2s ease;
+    }
+
+    .check-icon.visible {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .meta-row {
+      font-size: 11px;
+      color: var(--muted);
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .meta-label {
+      font-weight: 600;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: #94a3b8;
+    }
+
+    .status-select {
+      width: 100%;
+      padding: 8px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      background-color: #fff;
+      transition: all 0.2s ease;
+    }
+
+    .status-select.pending {
+      background-color: #fffbeb;
+      border-color: #fcd34d;
+      color: #b45309;
+    }
+
+    .status-select.approved {
+      background-color: #ecfdf5;
+      border-color: #6ee7b7;
+      color: #047857;
+    }
+
+    .row-actions {
+      text-align: center;
+      width: 100px;
+    }
+
+    .row-actions-inner {
+      min-height: 158px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .btn-link {
+      background: transparent;
+      border: 1px solid #fee2e2;
+      color: #ef4444;
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-link:hover {
+      background: #fef2f2;
+      border-color: #fca5a5;
+    }
+
+    .confirm-modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(10, 10, 12, 0.45);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 300;
+      padding: 16px;
+    }
+
+    .confirm-modal.active {
+      display: flex;
+    }
+
+    .confirm-card {
+      width: min(420px, 100%);
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      box-shadow: 0 18px 36px rgba(8, 10, 18, 0.2);
+      padding: 18px;
+    }
+
+    .confirm-card h3 {
+      margin: 0 0 8px;
+      font-family: "Fraunces", serif;
+      color: var(--accent);
+      font-size: 22px;
+    }
+
+    .confirm-card p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.45;
+    }
+
+    .confirm-actions {
+      margin-top: 14px;
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+    }
+
+    .btn.secondary {
+      background: #fff;
+      color: var(--muted);
+      border: 1px solid var(--line);
+      box-shadow: none;
+    }
+
+    .loading-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(10, 10, 12, 0.45);
+      z-index: 350;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+
+    .loading-overlay.active {
+      display: flex;
+    }
+
+    .loading-card {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      min-width: 220px;
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--ink);
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .loading-spinner {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      border: 2px solid #cbd5e1;
+      border-top-color: var(--accent);
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    @media (max-width: 900px) {
+      .header-meta { display: none; }
+      .content { padding: 20px 14px 36px; }
+      .panel { padding: 16px; }
+      .panel h2 { font-size: 26px; }
+      .toolbar { align-items: flex-start; }
+      .toolbar-note { font-size: 12px; }
+      .table-wrap { overflow-x: auto; }
+      table { min-width: 980px; }
+    }
+  </style>
+</head>
+<body>
+  <header class="top-header">
+    <div class="top-inner">
+      <div class="left-cluster">
+        <button class="nav-btn" type="button" aria-label="Open navigation"><span></span></button>
+        <div class="brand-logo-and-title">
+          <div class="brand-logo">
+            <img src="{% static 'images/icslis-logo.png' %}" alt="ICSLIS logo" />
+          </div>
+          <div class="site-title-left">
+            <h1>ICSLIS OJT System</h1>
+            <p>Institute of Computing Studies and Library Information Science</p>
+          </div>
+        </div>
+      </div>
+      <div class="header-meta">
+        <span>{% if role == "coordinator" %}Practicum Coordinator{% elif role == "instructor" %}Practicum Instructor{% else %}{{ role|title }}{% endif %}</span>
+        <strong>{{ account.first_name }}{% if account.middle_initial %} {{ account.middle_initial }}.{% endif %} {{ account.last_name }}</strong>
+      </div>
+    </div>
+  </header>
+
+  {% include "partials/staff_sidebar.html" %}
+
+  <main class="content">
+    <section class="panel">
+      <h2>Company Checklist</h2>
+      <div class="toolbar">
+        <button class="btn" type="button" id="add_company_row">Add Company</button>
+        <input
+          class="toolbar-search"
+          type="search"
+          id="company_search"
+          placeholder="Search company list..."
+          aria-label="Search company list"
+        />
+        <span class="toolbar-note">Track each stage with auto timestamps and status labels.</span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Company List</th>
+              <th>For City Resolution</th>
+              <th>For Company Signing</th>
+              <th>Forward to Office of the President</th>
+              <th>Processed and Notarized</th>
+              <th class="row-actions">Action</th>
+            </tr>
+          </thead>
+          <tbody id="company_checklist_body"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <div class="confirm-modal" id="uncheck_confirm_modal" aria-hidden="true">
+    <div class="confirm-card" role="dialog" aria-modal="true" aria-labelledby="uncheck_title">
+      <h3 id="uncheck_title">Uncheck this step?</h3>
+      <p>This will remove the saved check and passed date for this stage. Do you want to continue?</p>
+      <div class="confirm-actions">
+        <button class="btn secondary" type="button" id="uncheck_cancel_btn">Cancel</button>
+        <button class="btn" type="button" id="uncheck_confirm_btn">Continue</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="confirm-modal" id="delete_confirm_modal" aria-hidden="true">
+    <div class="confirm-card" role="dialog" aria-modal="true" aria-labelledby="delete_title">
+      <h3 id="delete_title">Delete this company row?</h3>
+      <p>This action will permanently remove the selected company checklist row. Do you want to continue?</p>
+      <div class="confirm-actions">
+        <button class="btn secondary" type="button" id="delete_cancel_btn">Cancel</button>
+        <button class="btn" type="button" id="delete_confirm_btn">Continue</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="loading-overlay" id="loading_overlay" aria-hidden="true">
+    <div class="loading-card">
+      <span class="loading-spinner" aria-hidden="true"></span>
+      <span id="loading_text">Please wait...</span>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      const navBtn = document.querySelector('.nav-btn');
+      const closeBtn = document.querySelector('.close-btn');
+      const backdrop = document.querySelector('.sidebar-backdrop');
+      const body = document.body;
+      const openSidebar = () => body.classList.add('sidebar-open');
+      const closeSidebar = () => body.classList.remove('sidebar-open');
+      navBtn?.addEventListener('click', openSidebar);
+      closeBtn?.addEventListener('click', closeSidebar);
+      backdrop?.addEventListener('click', closeSidebar);
+    })();
+
+    const API_URL = "{% url 'company_checklist_data' %}";
+    const checklistBody = document.getElementById("company_checklist_body");
+    const addBtn = document.getElementById("add_company_row");
+    const companySearch = document.getElementById("company_search");
+    const uncheckModal = document.getElementById("uncheck_confirm_modal");
+    const uncheckCancelBtn = document.getElementById("uncheck_cancel_btn");
+    const uncheckConfirmBtn = document.getElementById("uncheck_confirm_btn");
+    const deleteModal = document.getElementById("delete_confirm_modal");
+    const deleteCancelBtn = document.getElementById("delete_cancel_btn");
+    const deleteConfirmBtn = document.getElementById("delete_confirm_btn");
+    const loadingOverlay = document.getElementById("loading_overlay");
+    const loadingText = document.getElementById("loading_text");
+
+    const formatDateTime = (value) => {
+      if (!value) return "-";
+      const d = new Date(value);
+      if (Number.isNaN(d.getTime())) return "-";
+      return d.toLocaleString("en-US", {
+        month: "long",
+        day: "numeric",
+        year: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+      });
+    };
+
+    const getCsrfToken = () => {
+      const match = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/);
+      return match ? decodeURIComponent(match[1]) : "";
+    };
+
+    const requestJson = async (method, payload = null) => {
+      const response = await fetch(API_URL, {
+        method,
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": getCsrfToken(),
+          "X-Requested-With": "XMLHttpRequest",
+        },
+        body: payload ? JSON.stringify(payload) : null,
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data.ok) {
+        throw new Error(data.message || "Request failed.");
+      }
+      return data;
+    };
+
+    const createStage = (withStatus = false) => ({
+      checked: false,
+      passedAt: "",
+      ...(withStatus ? { approval: "", returnedIn: "" } : {}),
+    });
+
+    const normalizeRow = (row) => ({
+      id: row.id,
+      companyName: row.companyName || "",
+      cityResolution: row.cityResolution || createStage(true),
+      companySigning: row.companySigning || createStage(),
+      officePresident: row.officePresident || createStage(),
+      processedNotarized: row.processedNotarized || createStage(),
+    });
+
+    let rows = [];
+    let searchTerm = "";
+    let pendingUncheck = null;
+    let pendingDeleteRowId = null;
+
+    const setLoading = (active, text = "Please wait...") => {
+      if (!loadingOverlay) return;
+      loadingText.textContent = text;
+      loadingOverlay.classList.toggle("active", active);
+      loadingOverlay.setAttribute("aria-hidden", active ? "false" : "true");
+    };
+
+    const closeUncheckModal = () => {
+      if (!uncheckModal) return;
+      uncheckModal.classList.remove("active");
+      uncheckModal.setAttribute("aria-hidden", "true");
+      pendingUncheck = null;
+    };
+
+    const openUncheckModal = (data) => {
+      if (!uncheckModal) return;
+      pendingUncheck = data;
+      uncheckModal.classList.add("active");
+      uncheckModal.setAttribute("aria-hidden", "false");
+    };
+
+    const closeDeleteModal = () => {
+      if (!deleteModal) return;
+      deleteModal.classList.remove("active");
+      deleteModal.setAttribute("aria-hidden", "true");
+      pendingDeleteRowId = null;
+    };
+
+    const openDeleteModal = (rowId) => {
+      if (!deleteModal) return;
+      pendingDeleteRowId = rowId;
+      deleteModal.classList.add("active");
+      deleteModal.setAttribute("aria-hidden", "false");
+    };
+
+    const statusClass = (value) => {
+      if (value === "approved") return "approved";
+      if (value === "pending") return "pending";
+      return "";
+    };
+
+    const stageCell = (rowId, key, label, stage, withStatus = false) => {
+      const statusValue = withStatus ? (stage.approval || "") : "";
+      const selectClass = withStatus ? `status-select ${statusClass(statusValue)}` : "";
+      const returned = withStatus && statusValue === "approved" ? `
+        <div class="meta-row">
+          <span class="meta-label">Returned at:</span>
+          <span>${formatDateTime(stage.returnedIn)}</span>
+        </div>
+      ` : "";
+      const statusControl = withStatus ? `
+        <select class="${selectClass}" data-row-id="${rowId}" data-stage="${key}" data-field="approval" ${stage.checked ? "" : "disabled"}>
+          <option value="pending" ${(statusValue === "" || statusValue === "pending") ? "selected" : ""}>Pending</option>
+          <option value="approved" ${statusValue === "approved" ? "selected" : ""}>Approved</option>
+        </select>
+        ${returned}
+      ` : "";
+
+      return `
+        <div class="stage-cell">
+          <div class="stage-top">
+            <input type="checkbox" data-row-id="${rowId}" data-stage="${key}" data-field="checked" ${stage.checked ? "checked" : ""} />
+            <span>${label}</span>
+          </div>
+          <div class="meta-row">
+            <span class="meta-label">Passed:</span>
+            <span>${formatDateTime(stage.passedAt)}</span>
+          </div>
+          ${statusControl}
+        </div>
+      `;
+    };
+
+    const renderRows = () => {
+      checklistBody.innerHTML = "";
+      rows
+        .filter((row) => (row.companyName || "").toLowerCase().includes(searchTerm))
+        .forEach((row) => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>
+            <div class="company-cell">
+              <input
+                type="text"
+                placeholder="Enter company name"
+                value="${(row.companyName || "").replace(/"/g, "&quot;")}"
+                data-row-id="${row.id}"
+                data-field="companyName"
+              />
+            </div>
+          </td>
+          <td>${stageCell(row.id, "cityResolution", "Check", row.cityResolution, true)}</td>
+          <td>${stageCell(row.id, "companySigning", "Check", row.companySigning)}</td>
+          <td>${stageCell(row.id, "officePresident", "Check", row.officePresident)}</td>
+          <td>${stageCell(row.id, "processedNotarized", "Check", row.processedNotarized)}</td>
+          <td class="row-actions">
+            <div class="row-actions-inner">
+              <button class="btn-link" type="button" data-action="delete-row" data-row-id="${row.id}">Delete</button>
+            </div>
+          </td>
+        `;
+        checklistBody.appendChild(tr);
+      });
+    };
+
+    const getRow = (rowId) => rows.find((r) => r.id === rowId);
+
+    const reloadRows = async () => {
+      const data = await requestJson("GET");
+      rows = (data.rows || []).map(normalizeRow);
+      renderRows();
+    };
+
+    const persistRow = async (row) => {
+      const data = await requestJson("POST", {
+        action: "update",
+        row_id: row.id,
+        row,
+      });
+      const idx = rows.findIndex((r) => r.id === row.id);
+      if (idx >= 0) {
+        rows[idx] = normalizeRow(data.row);
+      }
+      renderRows();
+    };
+
+    addBtn.addEventListener("click", async () => {
+      addBtn.disabled = true;
+      try {
+        const data = await requestJson("POST", { action: "add" });
+        rows.push(normalizeRow(data.row));
+        renderRows();
+      } catch (err) {
+        alert(err.message || "Failed to add company.");
+      } finally {
+        addBtn.disabled = false;
+      }
+    });
+
+    companySearch?.addEventListener("input", (event) => {
+      searchTerm = (event.target.value || "").trim().toLowerCase();
+      renderRows();
+    });
+
+    checklistBody.addEventListener("change", async (event) => {
+      const input = event.target.closest('input[type="text"][data-row-id][data-field="companyName"]');
+      if (!input) return;
+      const row = getRow(input.dataset.rowId);
+      if (!row) return;
+      row.companyName = input.value;
+      try {
+        await persistRow(row);
+      } catch (err) {
+        alert(err.message || "Failed to save changes.");
+        await reloadRows();
+      }
+    });
+
+    checklistBody.addEventListener("change", async (event) => {
+      const checkbox = event.target.closest('input[type="checkbox"][data-stage][data-row-id]');
+      if (checkbox) {
+        const row = getRow(checkbox.dataset.rowId);
+        if (!row) return;
+        const stage = row[checkbox.dataset.stage];
+        if (!stage) return;
+
+        if (!checkbox.checked && stage.checked) {
+          checkbox.checked = true;
+          openUncheckModal({
+            rowId: checkbox.dataset.rowId,
+            stageKey: checkbox.dataset.stage,
+          });
+          return;
+        }
+
+        stage.checked = checkbox.checked;
+        if (checkbox.checked) {
+          stage.passedAt = new Date().toISOString();
+          if (checkbox.dataset.stage === "cityResolution") {
+            stage.approval = "pending";
+            stage.returnedIn = "";
+          }
+        } else {
+          stage.passedAt = "";
+          if (checkbox.dataset.stage === "cityResolution") {
+            stage.approval = "";
+            stage.returnedIn = "";
+          }
+        }
+        try {
+          await persistRow(row);
+        } catch (err) {
+          alert(err.message || "Failed to save changes.");
+          await reloadRows();
+        }
+        return;
+      }
+
+      const status = event.target.closest('select[data-stage][data-row-id][data-field="approval"]');
+      if (status) {
+        const row = getRow(status.dataset.rowId);
+        if (!row) return;
+        const stage = row[status.dataset.stage];
+        if (!stage || !stage.checked) return;
+        stage.approval = status.value;
+        stage.returnedIn = status.value === "approved" ? new Date().toISOString() : "";
+        try {
+          await persistRow(row);
+        } catch (err) {
+          alert(err.message || "Failed to save changes.");
+          await reloadRows();
+        }
+        return;
+      }
+
+    });
+
+    checklistBody.addEventListener("click", async (event) => {
+      const del = event.target.closest('button[data-action="delete-row"]');
+      if (!del) return;
+      openDeleteModal(del.dataset.rowId);
+    });
+
+    uncheckCancelBtn?.addEventListener("click", () => {
+      closeUncheckModal();
+    });
+
+    uncheckConfirmBtn?.addEventListener("click", async () => {
+      if (!pendingUncheck) return;
+      const { rowId, stageKey } = pendingUncheck;
+      const row = getRow(rowId);
+      if (!row) {
+        closeUncheckModal();
+        return;
+      }
+      const stage = row[stageKey];
+      if (!stage) {
+        closeUncheckModal();
+        return;
+      }
+
+      stage.checked = false;
+      stage.passedAt = "";
+      if (stageKey === "cityResolution") {
+        stage.approval = "";
+        stage.returnedIn = "";
+      }
+
+      try {
+        await persistRow(row);
+      } catch (err) {
+        alert(err.message || "Failed to save changes.");
+        await reloadRows();
+      } finally {
+        closeUncheckModal();
+      }
+    });
+
+    uncheckModal?.addEventListener("click", (event) => {
+      if (event.target === uncheckModal) {
+        closeUncheckModal();
+      }
+    });
+
+    deleteCancelBtn?.addEventListener("click", () => {
+      closeDeleteModal();
+    });
+
+    deleteConfirmBtn?.addEventListener("click", async () => {
+      if (!pendingDeleteRowId) return;
+      setLoading(true, "Deleting company row...");
+      try {
+        await requestJson("POST", { action: "delete", row_id: pendingDeleteRowId });
+        rows = rows.filter((row) => row.id !== pendingDeleteRowId);
+        renderRows();
+        closeDeleteModal();
+      } catch (err) {
+        alert(err.message || "Failed to delete row.");
+      } finally {
+        setLoading(false);
+      }
+    });
+
+    deleteModal?.addEventListener("click", (event) => {
+      if (event.target === deleteModal) {
+        closeDeleteModal();
+      }
+    });
+
+    reloadRows().catch((err) => {
+      alert(err.message || "Failed to load company checklist.");
+    });
+  </script>
+</body>
+</html>

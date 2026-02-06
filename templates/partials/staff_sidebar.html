@@ -1,0 +1,15 @@
+<nav class="sidebar">
+  <div class="sidebar-header">
+    <h3>Menu</h3>
+    <button class="close-btn" type="button" aria-label="Close navigation">&times;</button>
+  </div>
+  <ul class="sidebar-nav">
+    <li><a href="{% url 'staff_home' %}">Home</a></li>
+    <li><a href="{% url 'manage_records' %}">Manage Records</a></li>
+    <li><a href="{% url 'company_checklist' %}">Company Checklist</a></li>
+    <li><a href="{% url 'manage_accounts' %}">Manage Accounts</a></li>
+    <li><a href="{% url 'staff_profile' %}">Profile</a></li>
+    <li><a href="{% url 'logout' %}">Logout</a></li>
+  </ul>
+</nav>
+<div class="sidebar-backdrop"></div>

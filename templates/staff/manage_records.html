@@ -1,0 +1,2530 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ICSLIS OJT System | Manage Records</title>
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@400;600;700&family=Work+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ink: #0a0a0c;
+      --paper: #f6f7f9;
+      --accent: #0f2b52;
+      --accent-2: #d9b65a;
+      --accent-3: #b9922f;
+      --muted: #6e7278;
+      --card: #ffffff;
+      --shadow: 0 20px 40px rgba(8, 9, 12, 0.14);
+      --line: rgba(15, 43, 82, 0.08);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "Work Sans", system-ui, -apple-system, sans-serif;
+      color: var(--ink);
+      background: radial-gradient(1100px 620px at 6% 10%, rgba(217, 182, 90, 0.24) 0%, transparent 55%),
+                  radial-gradient(900px 700px at 90% 18%, rgba(15, 43, 82, 0.16) 0%, transparent 55%),
+                  linear-gradient(150deg, #f6f7f9, #eef1f6 55%, #f8f9fb);
+      min-height: 100vh;
+      padding: 0;
+    }
+
+    .shell { min-height: 100vh; }
+
+    .top-header {
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      background: linear-gradient(160deg, rgba(15, 43, 82, 0.98), rgba(10, 10, 12, 0.98));
+      color: #f4f6f9;
+      padding: 16px 28px;
+      box-shadow: 0 18px 36px rgba(8, 10, 18, 0.25);
+    }
+
+    .top-inner {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      min-height: 96px;
+    }
+
+    .left-cluster {
+      display: inline-flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .nav-btn {
+      width: 46px;
+      height: 46px;
+      border-radius: 16px;
+      border: 1px solid rgba(217, 182, 90, 0.6);
+      background: rgba(15, 43, 82, 0.45);
+      color: #f4f6f9;
+      display: grid;
+      place-items: center;
+      cursor: pointer;
+      transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+    }
+
+    .nav-btn:hover {
+      border-color: rgba(217, 182, 90, 0.9);
+      background: rgba(15, 43, 82, 0.6);
+    }
+
+    .nav-btn:active { transform: translateY(1px); }
+
+    .nav-btn span,
+    .nav-btn span::before,
+    .nav-btn span::after {
+      content: "";
+      display: block;
+      width: 18px;
+      height: 2px;
+      background: currentColor;
+      border-radius: 999px;
+      transition: transform 0.2s ease;
+    }
+
+    .nav-btn span::before { transform: translateY(-6px); }
+    .nav-btn span::after { transform: translateY(4px); }
+
+    .sidebar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 260px;
+      height: 100%;
+      background: #ffffff;
+      box-shadow: 8px 0 22px rgba(8, 9, 12, 0.18);
+      padding: 20px;
+      z-index: 100;
+      transform: translateX(-100%);
+      transition: transform 0.3s ease-in-out;
+    }
+
+    .sidebar-open .sidebar { transform: translateX(0); }
+
+    .sidebar-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+
+    .sidebar-header h3 {
+      margin: 0;
+      font-size: 16px;
+      color: var(--accent);
+    }
+
+    .close-btn {
+      border: none;
+      background: transparent;
+      font-size: 20px;
+      cursor: pointer;
+      color: var(--muted);
+    }
+
+    .sidebar-nav {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: grid;
+      gap: 8px;
+    }
+
+    .sidebar-nav a {
+      display: block;
+      text-decoration: none;
+      color: var(--accent);
+      font-weight: 600;
+      padding: 10px 12px;
+      border-radius: 10px;
+      background: #f6f7fb;
+    }
+
+    .sidebar-nav a:hover { background: #eef1f6; }
+
+    .sidebar-backdrop {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(10, 10, 12, 0.5);
+      z-index: 99;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
+    }
+
+    .sidebar-open .sidebar-backdrop {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .brand-logo-and-title {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-logo {
+      width: 46px;
+      height: 46px;
+      border-radius: 14px;
+      overflow: hidden;
+      border: 2px solid rgba(217, 182, 90, 0.85);
+      box-shadow: 0 0 0 4px rgba(217, 182, 90, 0.18);
+    }
+
+    .brand-logo img { width: 100%; height: 100%; object-fit: cover; }
+
+    .site-title-left {
+      display: grid;
+      gap: 4px;
+      text-align: left;
+    }
+
+    .site-title-left h1 {
+      margin: 0;
+      font-family: "Fraunces", serif;
+      font-size: clamp(22px, 2.6vw, 30px);
+    }
+
+    .site-title-left p {
+      margin: 0;
+      font-size: 13px;
+      color: rgba(244, 246, 249, 0.75);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .header-meta {
+      display: grid;
+      gap: 6px;
+      text-align: right;
+      font-size: 12px;
+      color: rgba(244, 246, 249, 0.7);
+      align-items: center;
+    }
+
+    .header-meta strong {
+      font-size: 14px;
+      color: #f4f6f9;
+    }
+
+    .content {
+      max-width: 1400px;
+      margin: 0 auto;
+      display: grid;
+      gap: 18px;
+      padding: 24px 20px 32px;
+    }
+
+    .panel {
+      background: var(--card);
+      border-radius: 22px;
+      padding: 20px;
+      box-shadow: var(--shadow);
+      border: 1px solid var(--line);
+      display: grid;
+      gap: 12px;
+    }
+
+    .panel h2 {
+      margin: 0;
+      font-family: "Fraunces", serif;
+      font-size: 22px;
+      color: var(--accent);
+    }
+
+    .filters {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .filters input,
+    .filters select {
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid #d8dce2;
+      font-size: 14px;
+      background: #fbfcfe;
+    }
+
+    .panel form {
+      display: flex;
+      justify-content: flex-end;
+    }
+
+    .alert {
+      padding: 10px 12px;
+      border-radius: 12px;
+      font-size: 14px;
+      border: 1px solid transparent;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .alert.success {
+      background: rgba(15, 43, 82, 0.08);
+      color: #0f2b52;
+      border-color: rgba(15, 43, 82, 0.2);
+    }
+
+    .alert.error {
+      background: rgba(161, 35, 35, 0.08);
+      color: #8e1d1d;
+      border-color: rgba(161, 35, 35, 0.25);
+    }
+
+    .alert .close-alert {
+      border: none;
+      background: transparent;
+      font-size: 16px;
+      line-height: 1;
+      cursor: pointer;
+      color: inherit;
+      opacity: 0.7;
+    }
+
+    .alert .close-alert:hover {
+      opacity: 1;
+    }
+
+    .is-loading {
+      opacity: 0.7;
+      pointer-events: none;
+    }
+
+    .panel button {
+      border: none;
+      padding: 10px 16px;
+      border-radius: 999px;
+      background: linear-gradient(135deg, var(--accent) 0%, #123e77 45%, var(--accent-3) 100%);
+      color: #fff;
+      font-weight: 600;
+      font-size: 14px;
+      cursor: pointer;
+      transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+      box-shadow: 0 12px 26px rgba(15, 43, 82, 0.28), inset 0 0 0 1px rgba(217, 182, 90, 0.5);
+    }
+
+    .panel button:hover {
+      background: linear-gradient(135deg, #0d2750 0%, #0f3567 45%, #c59a37 100%);
+      box-shadow: 0 14px 28px rgba(15, 43, 82, 0.34), inset 0 0 0 1px rgba(217, 182, 90, 0.7);
+    }
+
+    .panel button:active { transform: translateY(1px); }
+
+    .filters button {
+      align-self: stretch;
+      height: 100%;
+      white-space: nowrap;
+    }
+
+
+    .section-header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .calendar-controls {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(120px, 1fr));
+      gap: 12px;
+      align-items: center;
+    }
+
+    .calendar-note {
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    .loading-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(10, 10, 12, 0.42);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1200;
+      backdrop-filter: blur(2px);
+    }
+
+    .loading-backdrop.active {
+      display: flex;
+    }
+
+    .loading-card {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 14px 18px;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--accent);
+      font-weight: 600;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.16);
+    }
+
+    .loading-spinner {
+      width: 16px;
+      height: 16px;
+      border-radius: 999px;
+      border: 2px solid rgba(15, 43, 82, 0.2);
+      border-top-color: var(--accent);
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .attendance-toolbar {
+      display: grid;
+      grid-template-columns: minmax(180px, 1fr) minmax(160px, 200px) minmax(160px, 200px);
+      gap: 12px;
+      align-items: center;
+    }
+
+    .attendance-weeks {
+      display: grid;
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    .week-row {
+      display: grid;
+      grid-template-columns: 120px 1fr 120px;
+      gap: 12px;
+      align-items: center;
+      padding: 12px 14px;
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      background: #fbfcfe;
+      font-size: 13px;
+    }
+
+    .week-label {
+      font-weight: 700;
+      color: var(--accent);
+    }
+
+    .week-date {
+      color: var(--muted);
+    }
+
+    .week-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+
+    .status-pill {
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 600;
+      border: 1px solid transparent;
+    }
+
+    .status-pill.on-time {
+      background: rgba(15, 43, 82, 0.12);
+      color: #0f2b52;
+      border-color: rgba(15, 43, 82, 0.2);
+    }
+
+    .status-pill.late {
+      background: rgba(161, 35, 35, 0.12);
+      color: #8e1d1d;
+      border-color: rgba(161, 35, 35, 0.25);
+    }
+
+    .schedule-form {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 12px;
+      align-items: end;
+    }
+
+    .schedule-list {
+      display: grid;
+      gap: 10px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .schedule-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 14px;
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      background: #fbfcfe;
+      font-size: 13px;
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+    }
+
+    .tag.yes {
+      background: rgba(15, 43, 82, 0.12);
+      color: #0f2b52;
+    }
+
+    .tag.no {
+      background: rgba(161, 35, 35, 0.12);
+      color: #8e1d1d;
+    }
+
+    .ojt-status {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+    }
+
+    .ojt-status.not-started {
+      background: rgba(161, 35, 35, 0.12);
+      color: #8e1d1d;
+    }
+
+    .ojt-status.ongoing {
+      background: rgba(192, 144, 2, 0.16);
+      color: #8a5a00;
+    }
+
+    .ojt-status.completed {
+      background: rgba(20, 120, 57, 0.14);
+      color: #0f6b2f;
+    }
+
+    .toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .toggle-btn {
+      border: 1px solid transparent;
+      background: #ffffff;
+      color: var(--accent);
+      font-weight: 700;
+      border-radius: 999px;
+      width: 26px;
+      height: 26px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      line-height: 1;
+      transition: transform 0.15s ease, border-color 0.15s ease;
+    }
+
+    .toggle-btn.yes {
+      border-color: rgba(15, 43, 82, 0.2);
+    }
+
+    .toggle-btn.no {
+      border-color: rgba(161, 35, 35, 0.2);
+      color: #8e1d1d;
+    }
+
+    .toggle-btn:active { transform: translateY(1px); }
+
+    .table-wrap {
+      overflow: auto;
+      border-radius: 16px;
+      border: 1px solid var(--line);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 1000px;
+      background: #fff;
+    }
+
+    thead th {
+      text-align: left;
+      font-size: 12px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      padding: 10px 12px;
+      background: #f4f6fb;
+      color: var(--muted);
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+
+    tbody td {
+      padding: 10px 12px;
+      border-top: 1px solid var(--line);
+      font-size: 13px;
+      white-space: normal;
+    }
+
+    tbody td:nth-child(2),
+    tbody td:nth-child(3),
+    tbody td:nth-child(5),
+    tbody td:last-child {
+      white-space: nowrap;
+    }
+
+    .check {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 600;
+      color: var(--accent);
+    }
+
+    /* Modal Styles */
+    .modal-backdrop {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(10, 10, 12, 0.5);
+      z-index: 200;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+      backdrop-filter: blur(2px);
+      overflow-y: auto;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.3s ease, visibility 0.3s ease;
+    }
+
+    .modal-backdrop.active {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .modal {
+      background: #ffffff;
+      width: 100%;
+      max-width: 680px;
+      border-radius: 20px;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+      overflow: hidden;
+      animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      max-height: 90vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .confirm-modal .modal {
+      max-width: 420px;
+    }
+
+    .confirm-body {
+      padding: 24px 28px;
+      display: grid;
+      gap: 16px;
+    }
+
+    .confirm-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+    }
+
+    .late-options {
+      display: grid;
+      gap: 10px;
+    }
+
+    .late-options .btn {
+      width: 100%;
+      justify-content: flex-start;
+      text-align: left;
+    }
+
+    .late-note {
+      display: grid;
+      gap: 8px;
+    }
+
+    .late-note textarea {
+      width: 100%;
+      min-height: 78px;
+      resize: vertical;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-family: inherit;
+      font-size: 14px;
+    }
+    
+    .checklist-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--line);
+      transition: background 0.15s ease;
+    }
+
+    .checklist-item:last-child {
+      border-bottom: none;
+    }
+
+    .checklist-item:hover, .active-result {
+      background: rgba(217, 182, 90, 0.15);
+      border-left: 4px solid var(--accent-2);
+    }
+
+    .checklist-item span {
+      font-weight: 500;
+      font-size: 14px;
+      color: var(--ink);
+    }
+
+    /* DTR Styles */
+    .dtr-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .dtr-item {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .dtr-item label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .dtr-item input {
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      font-size: 14px;
+      background: #fbfcfe;
+      width: 100%;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .dtr-item input:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(15, 43, 82, 0.1);
+    }
+
+    .dtr-summary {
+      background: #f8fafc;
+      border-radius: 16px;
+      padding: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border: 1px solid var(--line);
+    }
+
+    .dtr-total-box {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .dtr-total-box span {
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+      font-weight: 600;
+      margin-bottom: 2px;
+    }
+
+    .dtr-total-box strong {
+      font-size: 24px;
+      color: var(--accent);
+    }
+
+    .dtr-total-box small {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--muted);
+      margin-left: 4px;
+    }
+    
+    .modal .panel {
+      box-shadow: none;
+      border: none;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      max-height: 100%;
+      min-height: 0;
+    }
+
+    .modal .sidebar-header {
+      padding: 24px 24px 16px;
+      margin: 0;
+      border-bottom: 1px solid var(--line);
+      flex-shrink: 0;
+    }
+
+    .modal .form-grid {
+      padding: 0 24px 24px;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      flex: 1;
+    }
+
+    @media (max-width: 600px) {
+      .modal-backdrop { align-items: flex-start; padding: 16px; }
+      .modal { max-height: calc(100vh - 32px); }
+      .modal .form-grid { max-height: calc(100vh - 140px); }
+    }
+
+    @keyframes slideUp {
+      from { transform: translateY(20px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+
+    @media (max-width: 900px) {
+      .top-inner { flex-wrap: wrap; justify-content: space-between; gap: 12px; }
+      .header-meta { display: none; }
+      .filters { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 600px) {
+      .top-header { padding: 12px 16px; }
+      .top-inner { flex-direction: column; align-items: flex-start; min-height: auto; }
+      .left-cluster { width: 100%; flex-wrap: wrap; }
+      .site-title-left p { display: none; }
+      .header-meta { width: 100%; text-align: left; }
+      .content { padding: 16px; }
+      .panel { padding: 16px; }
+      .panel form { width: 100%; }
+      .panel button { width: 100%; }
+      .filters { grid-template-columns: 1fr; }
+      .calendar-controls { grid-template-columns: 1fr; }
+      .attendance-toolbar { grid-template-columns: 1fr; }
+      .week-row { grid-template-columns: 1fr; align-items: flex-start; }
+      .week-status { justify-content: flex-start; }
+      .sidebar { width: min(80vw, 300px); }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header class="top-header">
+      <div class="top-inner">
+        <div class="left-cluster">
+          <button class="nav-btn" type="button" aria-label="Open navigation">
+            <span></span>
+          </button>
+          <div class="brand-logo-and-title">
+            <div class="brand-logo">
+              <img src="{% static 'images/icslis-logo.png' %}" alt="ICSLIS logo" />
+            </div>
+            <div class="site-title-left">
+              <h1>ICSLIS OJT System</h1>
+              <p>Institute of Computing Studies and Library Information Science</p>
+            </div>
+          </div>
+        </div>
+        <div class="header-meta">
+          <span>{% if role == "coordinator" %}Practicum Coordinator{% elif role == "instructor" %}Practicum Instructor{% else %}{{ role|title }}{% endif %}</span>
+          <strong>{{ account.first_name }}{% if account.middle_initial %} {{ account.middle_initial }}.{% endif %} {{ account.last_name }}</strong>
+        </div>
+      </div>
+    </header>
+
+    {% include "partials/staff_sidebar.html" %}
+
+    <main class="content">
+      <section class="panel">
+        <h2>Manage Records</h2>
+        <div id="message_panel"></div>
+        {% if message %}
+        <div class="alert {% if message_type %}{{ message_type }}{% endif %}">
+          <span>{{ message }}</span>
+          <button class="close-alert" type="button" aria-label="Close alert">✕</button>
+        </div>
+        {% endif %}
+        <form class="filters" method="get" action="" id="records_filter_form">
+          <input type="text" name="q" placeholder="Search student name or ID" value="{{ filters.q|default:'' }}" />
+          <input type="text" name="program" placeholder="Section / Program" value="{{ filters.program|default:'' }}" />
+          <select name="school_year" id="school_year_filter" data-selected="{{ filters.school_year|default:'' }}">
+            <option value="">School Year</option>
+          </select>
+          <button type="submit" id="records_search_btn">Search</button>
+        </form>
+        <form method="post" action="{% url 'sync_student_requirements' %}" id="sync_students_form">
+          {% csrf_token %}
+          <button type="submit" id="sync_students_btn">Pull Student Details</button>
+        </form>
+      </section>
+
+      <section class="panel" id="requirements_panel">
+        <h2>Student Requirements</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Student</th>
+                <th>Student No.</th>
+                <th>Section</th>
+                <th>Program</th>
+                <th>School Year</th>
+                <th>OJT Status</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="requirements_tbody">
+              {% if requirements %}
+                {% for req in requirements %}
+                <tr data-student-id="{{ req.student_id }}">
+                  <td>
+                    {{ req.first_name }}
+                    {% if req.second_name and req.second_name|lower != "none" and req.second_name|lower != "null" %}
+                      {{ req.second_name }}
+                    {% endif %}
+                    {% if req.middle_initial and req.middle_initial|lower != "none" and req.middle_initial|lower != "null" %}
+                      {{ req.middle_initial }}.
+                    {% endif %}
+                    {{ req.last_name }}
+                  </td>
+                  <td>{{ req.student_no }}</td>
+                  <td>{{ req.section }}</td>
+                  <td>{{ req.program }}</td>
+                  <td>{{ req.school_year }}</td>
+                  <td class="ojt-status-cell" data-student-id="{{ req.student_id }}">
+                    {% with jan=req.dtr_january_hours|default_if_none:0 %}
+                    {% with feb=req.dtr_february_hours|default_if_none:0 %}
+                    {% with mar=req.dtr_march_hours|default_if_none:0 %}
+                    {% with apr=req.dtr_april_hours|default_if_none:0 %}
+                    {% with may=req.dtr_may_hours|default_if_none:0 %}
+                    {% with jun=req.dtr_june_hours|default_if_none:0 %}
+                      {% with total=jan|add:feb|add:mar|add:apr|add:may|add:jun %}
+                        {% if total|add:0 >= 500 %}
+                          <span class="ojt-status completed">Completed</span>
+                        {% elif req.practicum_application and req.letter_of_intent and req.endorsement_letter and req.practicum_parental_consent and req.acceptance_form and req.reply_form and req.practicum_training_agreement and req.attendance_sheet and req.ojt_log_sheet and req.requirements_checklist %}
+                          <span class="ojt-status ongoing">Ongoing</span>
+                        {% else %}
+                          <span class="ojt-status not-started">Not started</span>
+                        {% endif %}
+                      {% endwith %}
+                    {% endwith %}
+                    {% endwith %}
+                    {% endwith %}
+                    {% endwith %}
+                    {% endwith %}
+                    {% endwith %}
+                  </td>
+                  <td>
+                    <button class="btn secondary view-requirements-btn" type="button" 
+                      data-student-id="{{ req.student_id }}"
+                      data-student-name="{{ req.first_name }}{% if req.second_name and req.second_name|lower != "none" and req.second_name|lower != "null" %} {{ req.second_name }}{% endif %}{% if req.middle_initial and req.middle_initial|lower != "none" and req.middle_initial|lower != "null" %} {{ req.middle_initial }}.{% endif %} {{ req.last_name }}"
+                      data-student-section="{{ req.section }}"
+                      data-reqs='{
+                        "start_of_ojt": "{{ req.start_of_ojt|default_if_none:"" }}",
+                        "dtr_january_hours": {{ req.dtr_january_hours|default_if_none:0 }},
+                        "dtr_february_hours": {{ req.dtr_february_hours|default_if_none:0 }},
+                        "dtr_march_hours": {{ req.dtr_march_hours|default_if_none:0 }},
+                        "dtr_april_hours": {{ req.dtr_april_hours|default_if_none:0 }},
+                        "dtr_may_hours": {{ req.dtr_may_hours|default_if_none:0 }},
+                        "dtr_june_hours": {{ req.dtr_june_hours|default_if_none:0 }},
+                        "practicum_application": {{ req.practicum_application|yesno:"true,false" }},
+                        "letter_of_intent": {{ req.letter_of_intent|yesno:"true,false" }},
+                        "endorsement_letter": {{ req.endorsement_letter|yesno:"true,false" }},
+                        "practicum_parental_consent": {{ req.practicum_parental_consent|yesno:"true,false" }},
+                        "acceptance_form": {{ req.acceptance_form|yesno:"true,false" }},
+                        "reply_form": {{ req.reply_form|yesno:"true,false" }},
+                        "practicum_training_agreement": {{ req.practicum_training_agreement|yesno:"true,false" }},
+                        "attendance_sheet": {{ req.attendance_sheet|yesno:"true,false" }},
+                        "weekly_journal": {{ req.weekly_journal|yesno:"true,false" }},
+                        "transmittal_form": {{ req.transmittal_form|yesno:"true,false" }},
+                        "evaluation_form": {{ req.evaluation_form|yesno:"true,false" }},
+                        "outreach_program_design": {{ req.outreach_program_design|yesno:"true,false" }},
+                        "outreach_post_activity_report": {{ req.outreach_post_activity_report|yesno:"true,false" }},
+                        "ojt_log_sheet": {{ req.ojt_log_sheet|yesno:"true,false" }},
+                        "requirements_checklist": {{ req.requirements_checklist|yesno:"true,false" }},
+                        "cca_hymn": {{ req.cca_hymn|yesno:"true,false" }}
+                      }'
+                    >
+                      Check Requirements
+                    </button>
+                  </td>
+                </tr>
+                {% endfor %}
+              {% else %}
+                <tr>
+                  <td colspan="6">No student records found.</td>
+                </tr>
+              {% endif %}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Submission Schedule Plotter</h2>
+        <form class="schedule-form" id="schedule_form">
+          <div class="field">
+            <label for="schedule_section">Section</label>
+            <input id="schedule_section" type="text" placeholder="e.g. 4A, 4B" required />
+          </div>
+          <div class="field">
+            <label for="schedule_day">Submission Day</label>
+            <select id="schedule_day" required>
+              <option value="" disabled selected>Select Day</option>
+              <option value="1">Monday</option>
+              <option value="2">Tuesday</option>
+              <option value="3">Wednesday</option>
+              <option value="4">Thursday</option>
+              <option value="5">Friday</option>
+            </select>
+          </div>
+          <button type="submit">Add Schedule</button>
+        </form>
+        <div class="form-actions" style="justify-content: flex-start; margin-top: 12px;">
+          <button class="btn secondary" type="button" id="delete_selected_schedules" style="display: none;">Delete Selected</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>
+                  <input type="checkbox" id="schedule_select_all" aria-label="Select all schedules" />
+                </th>
+                <th>Section</th>
+                <th>Submission Day</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="schedule_list"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div class="loading-backdrop" id="schedule_action_loading" aria-hidden="true">
+    <div class="loading-card" role="status" aria-live="polite">
+      <span class="loading-spinner" aria-hidden="true"></span>
+      <span id="schedule_action_loading_text">Processing schedule...</span>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="requirements_modal">
+    <div class="modal">
+      <section class="panel">
+        <div style="padding: 24px 28px 20px; border-bottom: 1px solid var(--line); flex-shrink: 0; background: #fff;">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+            <div>
+              <h2 id="modal_student_name" style="margin: 0; font-size: 20px; color: var(--accent);">Student Name</h2>
+              <p id="modal_student_section" class="calendar-note" style="margin: 6px 0 0;">Section</p>
+            </div>
+            <button class="close-btn" id="close_requirements_modal" style="font-size: 24px; color: var(--muted); padding: 4px;">✕</button>
+          </div>
+          <select id="modal_view_switcher" style="width: 100%; padding: 10px 14px; font-size: 14px; border-radius: 10px; border: 1px solid var(--line); background-color: #f8fafc;">
+            <option value="checklist">Requirements Checklist</option>
+            <option value="attendance">Weekly Journal</option>
+            <option value="dtr">Attendance Sheet (DTR)</option>
+          </select>
+
+          <!-- Quick Search Student -->
+          <div style="margin-top: 12px; position: relative;">
+            <div style="display: flex; gap: 8px;">
+              <input type="text" id="modal_student_search" placeholder="Search first, second, middle, or last name..." style="flex: 1; padding: 10px 14px; border-radius: 10px; border: 1px solid var(--line); font-size: 13px; background: #fff;" />
+              <button class="btn" type="button" id="modal_search_btn" style="padding: 8px 16px; font-size: 13px; border-radius: 10px;">Search</button>
+            </div>
+            <div id="modal_search_results" style="display: none; position: absolute; width: 100%; background: #fff; border: 1px solid var(--line); border-radius: 10px; margin-top: 4px; box-shadow: var(--shadow); z-index: 100; max-height: 200px; overflow-y: auto;">
+            </div>
+          </div>
+        </div>
+
+        <div id="modal_message_panel" style="padding: 0 28px;"></div>
+
+        <!-- View: Checklist -->
+        <div class="form-grid" style="grid-template-columns: 1fr; gap: 0; padding: 0;" id="modal_req_list">
+          <!-- Requirements items will be injected here -->
+        </div>
+
+        <!-- View: Attendance -->
+        <div id="modal_attendance_view" style="display: none; padding: 24px 28px; flex: 1; overflow-y: auto;">
+          <div class="section-header" style="margin-bottom: 20px;">
+            <div class="attendance-toolbar" style="width: 100%;">
+              <div class="field">
+                <label for="attendance_month_modal">Month</label>
+                <select id="attendance_month_modal"></select>
+              </div>
+              <div class="field">
+                <label for="attendance_year_modal">Year</label>
+                <select id="attendance_year_modal"></select>
+              </div>
+              <div class="field">
+                <label>Submission Day</label>
+                <input id="attendance_submission_day_modal" type="text" readonly />
+              </div>
+            </div>
+          </div>
+          <div id="attendance_alerts"></div>
+          <div class="attendance-weeks" id="attendance_weeks_modal"></div>
+        </div>
+
+        <!-- View: DTR -->
+        <div id="modal_dtr_view" style="display: none; padding: 24px 28px; flex: 1; overflow-y: auto;">
+          <div class="dtr-grid">
+            <div class="dtr-item">
+              <label for="dtr_january_hours">January</label>
+              <input type="number" min="0" id="dtr_january_hours" placeholder="0" />
+            </div>
+            <div class="dtr-item">
+              <label for="dtr_february_hours">February</label>
+              <input type="number" min="0" id="dtr_february_hours" placeholder="0" />
+            </div>
+            <div class="dtr-item">
+              <label for="dtr_march_hours">March</label>
+              <input type="number" min="0" id="dtr_march_hours" placeholder="0" />
+            </div>
+            <div class="dtr-item">
+              <label for="dtr_april_hours">April</label>
+              <input type="number" min="0" id="dtr_april_hours" placeholder="0" />
+            </div>
+            <div class="dtr-item">
+              <label for="dtr_may_hours">May</label>
+              <input type="number" min="0" id="dtr_may_hours" placeholder="0" />
+            </div>
+            <div class="dtr-item">
+              <label for="dtr_june_hours">June</label>
+              <input type="number" min="0" id="dtr_june_hours" placeholder="0" />
+            </div>
+          </div>
+
+          <div class="dtr-summary">
+            <div class="dtr-total-box">
+              <span>Total Completion Hours</span>
+              <div><strong id="dtr_total_hours">0</strong><small>hrs</small></div>
+            </div>
+            <div style="text-align: right;">
+              <div id="dtr_completion_status" style="font-weight: 600; font-size: 14px; color: var(--accent);">In progress</div>
+              <p class="calendar-note" style="margin: 4px 0 0; opacity: 0.8;">Required: 500 hours</p>
+            </div>
+          </div>
+
+          <div style="margin-top: 24px; display: flex; justify-content: flex-end;">
+            <button type="button" class="btn" id="dtr_save_btn" style="padding: 12px 24px; width: auto; min-width: 200px;">Save Attendance Hours</button>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <div class="modal-backdrop confirm-modal" id="confirm_modal">
+    <div class="modal">
+      <section class="panel">
+        <div class="confirm-body">
+          <h2 style="margin: 0; font-size: 18px; color: var(--accent);">Confirm Action</h2>
+          <p id="confirm_message" style="margin: 0; color: var(--muted);"></p>
+          <div class="confirm-actions">
+            <button class="btn secondary" type="button" id="confirm_cancel">Cancel</button>
+            <button class="btn" type="button" id="confirm_ok">Continue</button>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <div class="modal-backdrop confirm-modal" id="late_status_modal">
+    <div class="modal">
+      <section class="panel">
+        <div class="confirm-body">
+          <h2 style="margin: 0; font-size: 18px; color: var(--accent);">Late Submission</h2>
+          <p style="margin: 0; color: var(--muted);">This submission is past the due date. Choose how you want to mark it.</p>
+          <div id="late_status_alerts"></div>
+          <div class="late-options">
+            <button class="btn" type="button" id="late_option_late">Mark as Late</button>
+            <button class="btn secondary" type="button" id="late_option_late_excused">Mark as Late (Valid Reason)</button>
+          </div>
+          <div class="late-note" id="late_note_group" style="display: none;">
+            <label for="late_note_input" style="font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em;">Reason</label>
+            <textarea id="late_note_input" placeholder="Enter valid reason"></textarea>
+          </div>
+          <div class="confirm-actions">
+            <button class="btn secondary" type="button" id="late_status_cancel">Cancel</button>
+            <button class="btn" type="button" id="late_status_confirm">Continue</button>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <script>
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+    const updateUrl = "{% url 'update_student_requirement' %}";
+    const syncUrl = "{% url 'sync_student_requirements' %}";
+    const schedulesUrl = "{% url 'schedules' %}";
+    const weeklyJournalUrl = "{% url 'weekly_journal_weeks' %}";
+    const weeklyJournalCheckUrl = "{% url 'weekly_journal_check' %}";
+    const messagePanel = document.getElementById('message_panel');
+    const modalMessagePanel = document.getElementById('modal_message_panel');
+    const attendanceAlerts = document.getElementById('attendance_alerts');
+    const lateStatusAlerts = document.getElementById('late_status_alerts');
+
+    const monthNames = [
+      "January", "February", "March", "April", "May", "June",
+      "July", "August", "September", "October", "November", "December"
+    ];
+
+    const showAlert = (text, type) => {
+      if (!messagePanel) return;
+      const alert = document.createElement('div');
+      alert.className = `alert ${type || ''}`;
+      alert.innerHTML = `<span>${text}</span><button class="close-alert" type="button" aria-label="Close alert">✕</button>`;
+      messagePanel.appendChild(alert);
+      setTimeout(() => {
+        if (alert.isConnected) {
+          alert.remove();
+        }
+      }, 3000);
+    };
+
+    const showModalAlert = (text, type) => {
+      if (!modalMessagePanel) return;
+      // Clear previous modal alerts to avoid stacking
+      modalMessagePanel.innerHTML = '';
+      const alert = document.createElement('div');
+      alert.className = `alert ${type || ''}`;
+      alert.style.margin = '10px 0';
+      alert.innerHTML = `<span>${text}</span><button class="close-alert" type="button" aria-label="Close alert">✕</button>`;
+      modalMessagePanel.appendChild(alert);
+      setTimeout(() => {
+        if (alert.isConnected) {
+          alert.remove();
+        }
+      }, 3000);
+    };
+
+    const showAttendanceAlert = (text, type) => {
+      if (!attendanceAlerts) return;
+      attendanceAlerts.innerHTML = '';
+      const alert = document.createElement('div');
+      alert.className = `alert ${type || ''}`;
+      alert.innerHTML = `<span>${text}</span><button class="close-alert" type="button" aria-label="Close alert">✕</button>`;
+      attendanceAlerts.appendChild(alert);
+      setTimeout(() => {
+        if (alert.isConnected) {
+          alert.remove();
+        }
+      }, 3000);
+    };
+
+    const showLateStatusAlert = (text, type) => {
+      if (!lateStatusAlerts) return;
+      lateStatusAlerts.innerHTML = '';
+      const alert = document.createElement('div');
+      alert.className = `alert ${type || ''}`;
+      alert.innerHTML = `<span>${text}</span><button class="close-alert" type="button" aria-label="Close alert">✕</button>`;
+      lateStatusAlerts.appendChild(alert);
+      setTimeout(() => {
+        if (alert.isConnected) {
+          alert.remove();
+        }
+      }, 3000);
+    };
+
+    const escapeHtml = (value) => String(value || "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+
+    const refreshTable = async (url) => {
+      const response = await fetch(url, { headers: { "X-Requested-With": "XMLHttpRequest" } });
+      if (!response.ok) return;
+      const html = await response.text();
+      const temp = document.createElement('div');
+      temp.innerHTML = html;
+      const newTbody = temp.querySelector('#requirements_tbody');
+      const currentTbody = document.getElementById('requirements_tbody');
+      if (newTbody && currentTbody) {
+        currentTbody.innerHTML = newTbody.innerHTML;
+      }
+    };
+
+    const scheduleDays = {
+      1: "Monday",
+      2: "Tuesday",
+      3: "Wednesday",
+      4: "Thursday",
+      5: "Friday",
+    };
+
+    const ordinal = (value) => {
+      if (value === 1) return "1st";
+      if (value === 2) return "2nd";
+      if (value === 3) return "3rd";
+      return `${value}th`;
+    };
+
+    const buildAttendanceSelectors = (monthSelect, yearSelect) => {
+      if (!monthSelect || !yearSelect) return;
+
+      const now = new Date();
+      const currentYear = now.getFullYear();
+      const maxMonthIndex = Math.min(now.getMonth(), 5); // Jan-Jun only
+
+      const BASE_YEAR = 2025;
+      const endYear = currentYear;
+      yearSelect.innerHTML = '';
+      for (let year = BASE_YEAR; year <= endYear; year += 1) {
+        const option = document.createElement('option');
+        option.value = String(year);
+        option.textContent = String(year);
+        yearSelect.appendChild(option);
+      }
+      yearSelect.value = String(currentYear >= BASE_YEAR ? currentYear : BASE_YEAR);
+
+      const buildMonthsForYear = (selectedYear) => {
+        const limit = selectedYear === currentYear ? maxMonthIndex : 5;
+        monthSelect.innerHTML = '';
+        for (let index = 0; index <= limit; index += 1) {
+          const option = document.createElement('option');
+          option.value = String(index);
+          option.textContent = monthNames[index];
+          monthSelect.appendChild(option);
+        }
+        const defaultMonth = selectedYear === currentYear ? maxMonthIndex : 0;
+        monthSelect.value = String(defaultMonth);
+      };
+
+      buildMonthsForYear(Number(yearSelect.value));
+      yearSelect.addEventListener('change', () => {
+        buildMonthsForYear(Number(yearSelect.value));
+      });
+    };
+
+    const getWeekOccurrences = (year, monthIndex, submissionDay) => {
+      const dates = [];
+      const totalDays = new Date(year, monthIndex + 1, 0).getDate();
+      for (let date = 1; date <= totalDays; date += 1) {
+        const current = new Date(year, monthIndex, date);
+        const day = current.getDay(); // 0=Sun..6=Sat
+        const isoDay = day === 0 ? 7 : day;
+        if (isoDay === submissionDay) {
+          dates.push(new Date(year, monthIndex, date));
+        }
+      }
+      return dates;
+    };
+
+    const attendanceChecks = {};
+
+    const renderAttendanceWeeks = (section, submissionDay, monthSelect, yearSelect, container, submissionInput) => {
+      if (!monthSelect || !yearSelect || !container || !submissionInput) return;
+      const month = Number(monthSelect.value);
+      const year = Number(yearSelect.value);
+      submissionInput.value = scheduleDays[submissionDay] || "Not set";
+      container.innerHTML = '';
+
+      if (!submissionDay) {
+        container.innerHTML = '<p class="calendar-note">No submission schedule set for this section.</p>';
+        return;
+      }
+
+      const occurrences = getWeekOccurrences(year, month, submissionDay);
+      if (occurrences.length === 0) {
+        container.innerHTML = '<p class="calendar-note">No matching submission dates for this month.</p>';
+        return;
+      }
+
+      occurrences.forEach((dateObj, index) => {
+        const weekNo = index + 1;
+        const key = `${section}-${year}-${month}-${weekNo}`;
+        const record = attendanceChecks[key] || {};
+        const isChecked = record.checked === true;
+        const status = record.status || '';
+
+        const row = document.createElement('div');
+        row.className = 'week-row';
+        row.innerHTML = `
+          <div class="week-label">${ordinal(weekNo)} week</div>
+          <div class="week-date">${monthNames[month]} ${dateObj.getDate()}, ${year}</div>
+          <div class="week-status">
+            ${status ? `<span class="status-pill ${status === 'late' ? 'late' : 'on-time'}">${status === 'late' ? 'Late' : 'On-time'}</span>` : ''}
+            <input type="checkbox" data-week-key="${key}" ${isChecked ? 'checked' : ''} />
+          </div>
+        `;
+        container.appendChild(row);
+      });
+    };
+
+    // Modal Logic
+    const modal = document.getElementById('requirements_modal');
+    const modalStudentName = document.getElementById('modal_student_name');
+    const modalReqList = document.getElementById('modal_req_list');
+    const modalStudentSection = document.getElementById('modal_student_section');
+    const closeModalBtn = document.getElementById('close_requirements_modal');
+    const modalViewSwitcher = document.getElementById('modal_view_switcher');
+    const modalAttendanceView = document.getElementById('modal_attendance_view');
+    const modalDtrView = document.getElementById('modal_dtr_view');
+    const attendanceMonthModal = document.getElementById('attendance_month_modal');
+    const attendanceYearModal = document.getElementById('attendance_year_modal');
+    const attendanceWeeksModal = document.getElementById('attendance_weeks_modal');
+    const attendanceSubmissionModal = document.getElementById('attendance_submission_day_modal');
+    const dtrInputs = {
+      dtr_january_hours: document.getElementById('dtr_january_hours'),
+      dtr_february_hours: document.getElementById('dtr_february_hours'),
+      dtr_march_hours: document.getElementById('dtr_march_hours'),
+      dtr_april_hours: document.getElementById('dtr_april_hours'),
+      dtr_may_hours: document.getElementById('dtr_may_hours'),
+      dtr_june_hours: document.getElementById('dtr_june_hours'),
+    };
+    const dtrTotalHours = document.getElementById('dtr_total_hours');
+    const dtrCompletionStatus = document.getElementById('dtr_completion_status');
+    const dtrSaveBtn = document.getElementById('dtr_save_btn');
+    let currentModalSection = '';
+    let currentModalStudentId = '';
+
+    const LABELS = {
+      practicum_application: "Form 1 Practicum Application",
+      letter_of_intent: "Form 2 Letter of Intent",
+      endorsement_letter: "Form 3 Endorsement Letter",
+      practicum_parental_consent: "Form 4 Practicum Parental Consent",
+      acceptance_form: "Form 5 Acceptance Form",
+      reply_form: "Form 6 Reply Form",
+      practicum_training_agreement: "Form 7 Practicum Training Agreement",
+      attendance_sheet: "Form 8 Attendance Sheet",
+      weekly_journal: "Form 9 Weekly Journal",
+      transmittal_form: "Form 10 Transmittal Form",
+      evaluation_form: "Form 11 Evaluation Form",
+      outreach_program_design: "Form 12 Outreach Program Design",
+      outreach_post_activity_report: "Form 13 Outreach Post-Activity Report",
+      ojt_log_sheet: "Form 14 OJT Log Sheet",
+      requirements_checklist: "Form 15 Requirements Check List",
+      cca_hymn: "Final Requirement CCA Hymn"
+    };
+
+    const saveStartOfOjt = async (studentId, dateValue) => {
+      const payload = new URLSearchParams();
+      payload.append("student_id", studentId);
+      payload.append("field", "start_of_ojt");
+      payload.append("value", dateValue || "");
+
+      const response = await fetch(updateUrl, {
+        method: "POST",
+        headers: {
+          "X-CSRFToken": csrfToken || "",
+          "X-Requested-With": "XMLHttpRequest",
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: payload.toString(),
+      });
+      const data = await response.json().catch(() => null);
+      if (!response.ok || !data || !data.ok) {
+        showModalAlert(data?.message || "Failed to update Start of OJT.", "error");
+        return null;
+      }
+      const mainBtn = document.querySelector(`.view-requirements-btn[data-student-id="${studentId}"]`);
+      if (mainBtn) {
+        const reqs = JSON.parse(mainBtn.dataset.reqs);
+        reqs.start_of_ojt = data.value || "";
+        mainBtn.dataset.reqs = JSON.stringify(reqs);
+      }
+      showModalAlert("Start of OJT updated.", "success");
+      return data.value || "";
+    };
+
+    const setDtrInputs = (reqs) => {
+      Object.entries(dtrInputs).forEach(([field, input]) => {
+        if (!input) return;
+        const value = Number(reqs[field] ?? 0);
+        input.value = Number.isFinite(value) ? value : 0;
+      });
+      updateDtrSummary();
+    };
+
+    const getDtrPayload = () => {
+      const payload = {};
+      Object.entries(dtrInputs).forEach(([field, input]) => {
+        const val = input?.value;
+        const parsed = Number(val);
+        // Treat blank or invalid as 0
+        payload[field] = (val !== "" && Number.isFinite(parsed) && parsed >= 0) ? parsed : 0;
+      });
+      return payload;
+    };
+
+    const updateDtrSummary = () => {
+      const payload = getDtrPayload();
+      const total = Object.values(payload).reduce((sum, hours) => sum + hours, 0);
+      if (dtrTotalHours) dtrTotalHours.textContent = String(total);
+      if (dtrCompletionStatus) {
+        dtrCompletionStatus.textContent = total >= 500 ? "OJT Completed" : "In progress";
+      }
+    };
+
+    const saveDtrHours = async (studentId) => {
+      if (!studentId) return false;
+      const payload = getDtrPayload();
+      const fields = Object.keys(payload);
+      for (const field of fields) {
+        const params = new URLSearchParams();
+        params.append("student_id", studentId);
+        params.append("field", field);
+        params.append("value", String(payload[field]));
+        const response = await fetch(updateUrl, {
+          method: "POST",
+          headers: {
+            "X-CSRFToken": csrfToken || "",
+            "X-Requested-With": "XMLHttpRequest",
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+          body: params.toString(),
+        });
+        const data = await response.json().catch(() => null);
+        if (!response.ok || !data || !data.ok) {
+          showModalAlert(data?.message || "Failed to update DTR hours.", "error");
+          return false;
+        }
+      }
+      const mainBtn = document.querySelector(`.view-requirements-btn[data-student-id="${studentId}"]`);
+      if (mainBtn) {
+        const reqs = JSON.parse(mainBtn.dataset.reqs);
+        fields.forEach((field) => {
+          reqs[field] = payload[field];
+        });
+        mainBtn.dataset.reqs = JSON.stringify(reqs);
+        updateOjtStatusCell(studentId, reqs);
+      }
+      updateDtrSummary();
+      showModalAlert("Attendance Sheet Updated.", "success");
+      return true;
+    };
+
+    const showRequirementsModal = (studentId, studentName, section, reqs, preserveView = false) => {
+      currentModalStudentId = studentId || "";
+      modalStudentName.textContent = studentName;
+      if (modalStudentSection) {
+        modalStudentSection.textContent = section ? `Section: ${section}` : 'Section';
+      }
+      currentModalSection = section || '';
+      modalReqList.innerHTML = '';
+
+      const startRow = document.createElement('div');
+      startRow.className = 'checklist-item';
+      startRow.innerHTML = `
+        <span>Start of OJT</span>
+        <div style="display:flex; gap:8px; align-items:center;">
+          <input type="date" class="start-ojt-input" value="${escapeHtml(reqs.start_of_ojt || '')}" style="padding:8px 10px; border:1px solid var(--line); border-radius:8px;" />
+          <button type="button" class="btn secondary start-ojt-save" data-student-id="${studentId}" data-current-date="${escapeHtml(reqs.start_of_ojt || '')}">Save</button>
+        </div>
+      `;
+      modalReqList.appendChild(startRow);
+      setDtrInputs(reqs);
+      
+      Object.entries(reqs).forEach(([key, value]) => {
+        if (key === "start_of_ojt" || key.startsWith("dtr_")) return;
+        const label = LABELS[key] || key.replace(/_/g, ' ');
+        const isYes = value === true;
+        
+        const row = document.createElement('div');
+        row.className = 'checklist-item';
+
+        row.innerHTML = `
+          <span>${label}</span>
+          <input type="checkbox" class="requirement-checkbox" 
+            data-student-id="${studentId}" 
+            data-field="${key}" 
+            ${isYes ? 'checked' : ''} 
+            style="width: 20px; height: 20px; cursor: pointer; accent-color: var(--accent);" />
+        `;
+        modalReqList.appendChild(row);
+      });
+      
+      // Reset view to Checklist unless preserveView is true
+      if (modalViewSwitcher) {
+        if (!preserveView) {
+          modalViewSwitcher.value = 'checklist';
+        }
+        modalViewSwitcher.dispatchEvent(new Event('change'));
+      }
+
+      modal.classList.add('active');
+    };
+
+    const hideModal = () => {
+      modal.classList.remove('active');
+    };
+
+    if (closeModalBtn) closeModalBtn.addEventListener('click', hideModal);
+    if (modal) modal.addEventListener('click', (e) => {
+      if (e.target === modal) hideModal();
+    });
+    if (modalViewSwitcher && modalAttendanceView && modalDtrView) {
+      modalViewSwitcher.addEventListener('change', () => {
+        const selectedView = modalViewSwitcher.value;
+        const isChecklist = selectedView === 'checklist';
+        const isAttendance = selectedView === 'attendance';
+        const isDtr = selectedView === 'dtr';
+        modalReqList.style.display = isChecklist ? 'grid' : 'none';
+        modalAttendanceView.style.display = isAttendance ? 'block' : 'none';
+        modalDtrView.style.display = isDtr ? 'block' : 'none';
+        if (isAttendance) {
+          loadSchedules().then(refreshModalAttendance);
+        }
+      });
+    }
+
+    // Modal Search Logic
+    const modalSearchInput = document.getElementById('modal_student_search');
+    const modalSearchBtn = document.getElementById('modal_search_btn');
+    const modalSearchResults = document.getElementById('modal_search_results');
+
+    const performModalSearch = () => {
+      const query = (modalSearchInput?.value || '').trim().toLowerCase();
+      if (!query) {
+        if (modalSearchResults) {
+          modalSearchResults.innerHTML = '';
+          modalSearchResults.style.display = 'none';
+        }
+        return;
+      }
+
+      const buttons = Array.from(document.querySelectorAll('.view-requirements-btn'));
+      const matches = buttons.filter(btn => {
+        const name = (btn.dataset.studentName || '').toLowerCase();
+        return name.includes(query);
+      });
+
+      if (modalSearchResults) {
+        modalSearchResults.innerHTML = '';
+        if (matches.length === 0) {
+          modalSearchResults.innerHTML = '<div style="padding: 12px; color: var(--muted); font-size: 13px;">No students found.</div>';
+        } else {
+          matches.slice(0, 10).forEach((btn, index) => {
+            const item = document.createElement('div');
+            item.className = 'checklist-item search-result-item'; 
+            item.style.cursor = 'pointer';
+            item.style.padding = '10px 14px';
+            item.dataset.matchIndex = index;
+            item.innerHTML = `
+              <div style="display: flex; flex-direction: column;">
+                <span style="font-weight: 600;">${escapeHtml(btn.dataset.studentName)}</span>
+                <span style="font-size: 11px; color: var(--muted);">${escapeHtml(btn.dataset.studentSection)}</span>
+              </div>
+            `;
+            item.addEventListener('click', () => {
+              showRequirementsModal(
+                btn.dataset.studentId,
+                btn.dataset.studentName,
+                btn.dataset.studentSection,
+                JSON.parse(btn.dataset.reqs),
+                true // preserveView
+              );
+              modalSearchResults.style.display = 'none';
+              if (modalSearchInput) modalSearchInput.value = '';
+            });
+            modalSearchResults.appendChild(item);
+          });
+        }
+        modalSearchResults.style.display = 'block';
+      }
+    };
+
+    if (modalSearchBtn) modalSearchBtn.addEventListener('click', performModalSearch);
+    if (modalSearchInput) {
+      // Trigger search automatically as user types
+      modalSearchInput.addEventListener('input', performModalSearch);
+      
+      modalSearchInput.addEventListener('keydown', (e) => {
+        const results = modalSearchResults?.querySelectorAll('.search-result-item');
+        if (!results || results.length === 0) return;
+
+        let activeIndex = -1;
+        results.forEach((item, index) => {
+          if (item.classList.contains('active-result')) {
+            activeIndex = index;
+            item.classList.remove('active-result');
+          }
+        });
+
+        if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          activeIndex = (activeIndex + 1) % results.length;
+          results[activeIndex].classList.add('active-result');
+          results[activeIndex].scrollIntoView({ block: 'nearest' });
+        } else if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          activeIndex = (activeIndex - 1 + results.length) % results.length;
+          results[activeIndex].classList.add('active-result');
+          results[activeIndex].scrollIntoView({ block: 'nearest' });
+        } else if (e.key === 'Enter') {
+          e.preventDefault();
+          if (activeIndex >= 0) {
+            results[activeIndex].click();
+          } else {
+            // If no item is active, select the first one
+            results[0].click();
+          }
+        }
+      });
+    }
+
+    // Close search results when clicking outside
+    document.addEventListener('click', (e) => {
+      if (!modalSearchInput?.contains(e.target) && !modalSearchResults?.contains(e.target)) {
+        if (modalSearchResults) modalSearchResults.style.display = 'none';
+      }
+    });
+
+
+    const updateOjtStatusCell = (studentId, reqs) => {
+      if (!studentId || !reqs) return;
+      const cell = document.querySelector(`.ojt-status-cell[data-student-id="${studentId}"]`);
+      if (!cell) return;
+
+      const totalHours =
+        Number(reqs.dtr_january_hours || 0) +
+        Number(reqs.dtr_february_hours || 0) +
+        Number(reqs.dtr_march_hours || 0) +
+        Number(reqs.dtr_april_hours || 0) +
+        Number(reqs.dtr_may_hours || 0) +
+        Number(reqs.dtr_june_hours || 0);
+
+      if (totalHours >= 500) {
+        cell.innerHTML = '<span class="ojt-status completed">Completed</span>';
+        return;
+      }
+
+      const hasOngoingReqs =
+        reqs.practicum_application === true &&
+        reqs.letter_of_intent === true &&
+        reqs.endorsement_letter === true &&
+        reqs.practicum_parental_consent === true &&
+        reqs.acceptance_form === true &&
+        reqs.reply_form === true &&
+        reqs.practicum_training_agreement === true &&
+        reqs.attendance_sheet === true &&
+        reqs.ojt_log_sheet === true &&
+        reqs.requirements_checklist === true;
+
+      cell.innerHTML = hasOngoingReqs
+        ? '<span class="ojt-status ongoing">Ongoing</span>'
+        : '<span class="ojt-status not-started">Not started</span>';
+    };
+
+    const updateCell = async (button) => {
+      const studentId = button.dataset.studentId;
+      const field = button.dataset.field;
+      const value = button.dataset.value;
+      const payload = new URLSearchParams();
+      payload.append("student_id", studentId);
+      payload.append("field", field);
+      payload.append("value", value);
+
+      const response = await fetch(updateUrl, {
+        method: "POST",
+        headers: {
+          "X-CSRFToken": csrfToken || "",
+          "X-Requested-With": "XMLHttpRequest",
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: payload.toString(),
+      });
+
+      if (!response.ok) {
+        return;
+      }
+
+      const data = await response.json();
+      if (!data.ok) {
+        return;
+      }
+
+      const wrapper = button.closest(".toggle");
+      const tag = wrapper?.querySelector(".tag");
+      const isYes = data.value === true;
+
+      if (tag) {
+        tag.textContent = isYes ? "Yes" : "No";
+        tag.classList.toggle("yes", isYes);
+        tag.classList.toggle("no", !isYes);
+      }
+
+      button.dataset.value = isYes ? "false" : "true";
+      button.classList.toggle("yes", !isYes);
+      button.classList.toggle("no", isYes);
+      button.textContent = isYes ? "✕" : "✓";
+
+      // Also update the data-reqs attribute in the main table so reopening modal shows correct state
+      const mainBtn = document.querySelector(`.view-requirements-btn[data-student-id="${studentId}"]`);
+      if (mainBtn) {
+        const reqs = JSON.parse(mainBtn.dataset.reqs);
+        reqs[field] = isYes;
+        mainBtn.dataset.reqs = JSON.stringify(reqs);
+        updateOjtStatusCell(studentId, reqs);
+      }
+    };
+
+    document.addEventListener("click", (event) => {
+      const startSaveBtn = event.target.closest(".start-ojt-save");
+      if (startSaveBtn) {
+        const studentId = startSaveBtn.dataset.studentId;
+        const input = startSaveBtn.closest(".checklist-item")?.querySelector(".start-ojt-input");
+        const nextDate = input?.value || "";
+        const currentDate = startSaveBtn.dataset.currentDate || "";
+
+        // Allow saving if blank (clearing the date) or if changed
+        if (currentDate && currentDate !== nextDate) {
+          const message = nextDate
+            ? "You already set a Start of OJT date. Do you want to replace it?"
+            : "Clear the Start of OJT date?";
+          openConfirm(message, async () => {
+            const saved = await saveStartOfOjt(studentId, nextDate);
+            if (saved !== null) {
+              startSaveBtn.dataset.currentDate = saved;
+            }
+          });
+        } else {
+          (async () => {
+            const saved = await saveStartOfOjt(studentId, nextDate);
+            if (saved !== null) {
+              startSaveBtn.dataset.currentDate = saved;
+            }
+          })();
+        }
+        return;
+      }
+
+      const toggleBtn = event.target.closest(".toggle-btn");
+      if (toggleBtn) {
+        updateCell(toggleBtn);
+        return;
+      }
+      
+      const viewBtn = event.target.closest(".view-requirements-btn");
+      if (viewBtn) {
+        const sid = viewBtn.dataset.studentId;
+        const sname = viewBtn.dataset.studentName;
+        const section = viewBtn.dataset.studentSection || '';
+        const reqs = JSON.parse(viewBtn.dataset.reqs);
+        updateOjtStatusCell(sid, reqs);
+        showRequirementsModal(sid, sname, section, reqs);
+      }
+    });
+
+    document.addEventListener("change", (event) => {
+      const checkbox = event.target.closest(".requirement-checkbox");
+      if (!checkbox) return;
+
+      const studentId = checkbox.dataset.studentId;
+      const field = checkbox.dataset.field;
+      const value = checkbox.checked ? "true" : "false";
+
+      const payload = new URLSearchParams();
+      payload.append("student_id", studentId);
+      payload.append("field", field);
+      payload.append("value", value);
+
+      (async () => {
+        const response = await fetch(updateUrl, {
+          method: "POST",
+          headers: {
+            "X-CSRFToken": csrfToken || "",
+            "X-Requested-With": "XMLHttpRequest",
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+          body: payload.toString(),
+        });
+        const data = await response.json().catch(() => null);
+        if (!response.ok || !data || !data.ok) {
+          const errorText = data?.message || `Failed to update requirement. (${response.status})`;
+          checkbox.checked = !checkbox.checked;
+          showModalAlert(errorText, "error");
+          return;
+        }
+
+        const mainBtn = document.querySelector(`.view-requirements-btn[data-student-id="${studentId}"]`);
+        if (mainBtn) {
+          const reqs = JSON.parse(mainBtn.dataset.reqs);
+          reqs[field] = data.value === true;
+          mainBtn.dataset.reqs = JSON.stringify(reqs);
+          updateOjtStatusCell(studentId, reqs);
+        }
+      })();
+    });
+
+    document.addEventListener("click", (event) => {
+      const closeBtn = event.target.closest(".close-alert");
+      if (closeBtn) {
+        const alert = closeBtn.closest(".alert");
+        if (alert) {
+          alert.remove();
+        }
+      }
+    });
+
+    const filterForm = document.getElementById('records_filter_form');
+    const searchBtn = document.getElementById('records_search_btn');
+    if (filterForm) {
+      filterForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        if (searchBtn) {
+          searchBtn.disabled = true;
+          searchBtn.classList.add('is-loading');
+          searchBtn.dataset.originalText = searchBtn.textContent;
+          searchBtn.textContent = 'Searching...';
+        }
+        const formData = new FormData(filterForm);
+        const params = new URLSearchParams(formData);
+        const url = `${window.location.pathname}?${params.toString()}`;
+        window.history.replaceState({}, '', url);
+        await refreshTable(url);
+        if (searchBtn) {
+          searchBtn.disabled = false;
+          searchBtn.classList.remove('is-loading');
+          searchBtn.textContent = searchBtn.dataset.originalText || 'Search';
+        }
+      });
+    }
+
+    const syncForm = document.getElementById('sync_students_form');
+    const syncBtn = document.getElementById('sync_students_btn');
+    if (syncForm) {
+      syncForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        if (syncBtn) {
+          syncBtn.disabled = true;
+          syncBtn.classList.add('is-loading');
+          syncBtn.dataset.originalText = syncBtn.textContent;
+          syncBtn.textContent = 'Syncing...';
+        }
+        const formData = new FormData(syncForm);
+        const response = await fetch(syncUrl, {
+          method: 'POST',
+          headers: {
+            "X-Requested-With": "XMLHttpRequest",
+            "X-CSRFToken": formData.get('csrfmiddlewaretoken') || "",
+          },
+        });
+        const data = await response.json().catch(() => null);
+        if (!response.ok || !data || !data.ok) {
+          showAlert(data?.message || "Sync failed. Please try again.", "error");
+          if (syncBtn) {
+            syncBtn.disabled = false;
+            syncBtn.classList.remove('is-loading');
+            syncBtn.textContent = syncBtn.dataset.originalText || 'Pull Student Details';
+          }
+          return;
+        }
+        showAlert(data.message || "Student details have been synced.", "success");
+        await refreshTable(window.location.href);
+        if (syncBtn) {
+          syncBtn.disabled = false;
+          syncBtn.classList.remove('is-loading');
+          syncBtn.textContent = syncBtn.dataset.originalText || 'Pull Student Details';
+        }
+      });
+    }
+
+    const scheduleForm = document.getElementById('schedule_form');
+    const scheduleList = document.getElementById('schedule_list');
+    const scheduleSectionInput = document.getElementById('schedule_section');
+    const scheduleDaySelect = document.getElementById('schedule_day');
+    const deleteSelectedBtn = document.getElementById('delete_selected_schedules');
+    const scheduleSelectAll = document.getElementById('schedule_select_all');
+    const scheduleActionLoading = document.getElementById('schedule_action_loading');
+    const scheduleActionLoadingText = document.getElementById('schedule_action_loading_text');
+    const confirmModal = document.getElementById('confirm_modal');
+    const confirmMessage = document.getElementById('confirm_message');
+    const confirmOk = document.getElementById('confirm_ok');
+    const confirmCancel = document.getElementById('confirm_cancel');
+    const lateStatusModal = document.getElementById('late_status_modal');
+    const lateOptionLate = document.getElementById('late_option_late');
+    const lateOptionLateExcused = document.getElementById('late_option_late_excused');
+    const lateNoteGroup = document.getElementById('late_note_group');
+    const lateNoteInput = document.getElementById('late_note_input');
+    const lateStatusConfirm = document.getElementById('late_status_confirm');
+    const lateStatusCancel = document.getElementById('late_status_cancel');
+
+    const submissionSchedules = [];
+
+    const setScheduleActionLoading = (isLoading, text) => {
+      if (!scheduleActionLoading) return;
+      if (scheduleActionLoadingText) {
+        scheduleActionLoadingText.textContent = text || "Processing schedule...";
+      }
+      scheduleActionLoading.classList.toggle('active', Boolean(isLoading));
+      scheduleActionLoading.setAttribute('aria-hidden', isLoading ? 'false' : 'true');
+    };
+
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') {
+        const ojtInput = event.target.closest('.start-ojt-input');
+        if (ojtInput) {
+          event.preventDefault();
+          const saveBtn = ojtInput.nextElementSibling;
+          if (saveBtn) {
+            saveBtn.click();
+          }
+          return;
+        }
+      }
+
+      if (event.key !== 'Escape') return;
+      if (lateStatusModal?.classList.contains('active')) {
+        event.preventDefault();
+        lateStatusCancel?.click();
+        return;
+      }
+      if (confirmModal?.classList.contains('active')) {
+        event.preventDefault();
+        confirmCancel?.click();
+        return;
+      }
+      if (modal?.classList.contains('active')) {
+        event.preventDefault();
+        hideModal();
+      }
+    });
+
+    const openConfirm = (message, onConfirm) => {
+      if (!confirmModal || !confirmMessage || !confirmOk || !confirmCancel) {
+        const fallback = window.confirm(message);
+        if (fallback && typeof onConfirm === "function") onConfirm();
+        return;
+      }
+      confirmMessage.textContent = message;
+      confirmModal.classList.add('active');
+      const cleanup = () => {
+        confirmModal.classList.remove('active');
+        confirmOk.removeEventListener('click', handleConfirm);
+        confirmCancel.removeEventListener('click', handleCancel);
+        confirmModal.removeEventListener('click', handleBackdrop);
+      };
+      const handleConfirm = () => {
+        cleanup();
+        if (typeof onConfirm === "function") onConfirm();
+      };
+      const handleCancel = () => {
+        cleanup();
+      };
+      const handleBackdrop = (event) => {
+        if (event.target === confirmModal) {
+          cleanup();
+        }
+      };
+      confirmOk.addEventListener('click', handleConfirm);
+      confirmCancel.addEventListener('click', handleCancel);
+      confirmModal.addEventListener('click', handleBackdrop);
+    };
+
+    const openLateStatusChoice = () => new Promise((resolve) => {
+      if (!lateStatusModal) {
+        resolve({ statusOverride: "late", statusNote: "" });
+        return;
+      }
+      let selectedStatus = "late";
+
+      const syncLateOptionButtons = () => {
+        const pairs = [
+          [lateOptionLate, "late"],
+          [lateOptionLateExcused, "late_excused"],
+        ];
+        pairs.forEach(([btn, value]) => {
+          if (!btn) return;
+          if (selectedStatus === value) {
+            btn.classList.remove("secondary");
+          } else {
+            btn.classList.add("secondary");
+          }
+        });
+        if (lateNoteGroup) {
+          lateNoteGroup.style.display = selectedStatus === "late_excused" ? "grid" : "none";
+        }
+      };
+
+      const cleanup = () => {
+        lateStatusModal.classList.remove("active");
+        if (lateNoteInput) lateNoteInput.value = "";
+        if (lateStatusAlerts) lateStatusAlerts.innerHTML = "";
+        if (lateOptionLate) lateOptionLate.removeEventListener("click", pickLate);
+        if (lateOptionLateExcused) lateOptionLateExcused.removeEventListener("click", pickLateExcused);
+        if (lateStatusConfirm) lateStatusConfirm.removeEventListener("click", confirmChoice);
+        if (lateStatusCancel) lateStatusCancel.removeEventListener("click", cancelChoice);
+        lateStatusModal.removeEventListener("click", closeOnBackdrop);
+      };
+
+      const pickLate = () => {
+        selectedStatus = "late";
+        syncLateOptionButtons();
+      };
+      const pickLateExcused = () => {
+        selectedStatus = "late_excused";
+        syncLateOptionButtons();
+      };
+      const confirmChoice = () => {
+        const note = (lateNoteInput?.value || "").trim();
+        if (selectedStatus === "late_excused" && !note) {
+          showLateStatusAlert("Please enter a valid reason for late-excused.", "error");
+          return;
+        }
+        cleanup();
+        resolve({ statusOverride: selectedStatus, statusNote: note });
+      };
+      const cancelChoice = () => {
+        cleanup();
+        resolve(null);
+      };
+      const closeOnBackdrop = (event) => {
+        if (event.target === lateStatusModal) {
+          cancelChoice();
+        }
+      };
+
+      syncLateOptionButtons();
+      lateStatusModal.classList.add("active");
+      if (lateOptionLate) lateOptionLate.addEventListener("click", pickLate);
+      if (lateOptionLateExcused) lateOptionLateExcused.addEventListener("click", pickLateExcused);
+      if (lateStatusConfirm) lateStatusConfirm.addEventListener("click", confirmChoice);
+      if (lateStatusCancel) lateStatusCancel.addEventListener("click", cancelChoice);
+      lateStatusModal.addEventListener("click", closeOnBackdrop);
+    });
+
+    const updateDeleteSelectedVisibility = () => {
+      if (!deleteSelectedBtn || !scheduleList) return;
+      const selected = scheduleList.querySelectorAll('.schedule-select:checked').length;
+      deleteSelectedBtn.style.display = selected > 0 ? 'inline-flex' : 'none';
+    };
+
+    const renderScheduleTable = () => {
+      if (!scheduleList) return;
+      scheduleList.innerHTML = '';
+      if (scheduleSelectAll) {
+        scheduleSelectAll.checked = false;
+      }
+      submissionSchedules.forEach((item, index) => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td><input type="checkbox" class="schedule-select" data-section="${item.section}" aria-label="Select ${item.section}" /></td>
+          <td>${item.section}</td>
+          <td>${scheduleDays[item.submissionDay]}</td>
+          <td><button type="button" class="btn secondary" data-section="${item.section}">Delete</button></td>
+        `;
+        scheduleList.appendChild(row);
+      });
+      updateDeleteSelectedVisibility();
+    };
+
+    const getSubmissionDayForSection = (section) => {
+      const found = submissionSchedules.find(s => s.section === section);
+      return found ? found.submissionDay : null;
+    };
+    const refreshModalAttendance = () => {
+      if (!currentModalSection) return;
+      loadWeeklyJournal(currentModalSection);
+    };
+
+    const loadSchedules = async () => {
+      const response = await fetch(schedulesUrl, { headers: { "X-Requested-With": "XMLHttpRequest" } });
+      const data = await response.json().catch(() => null);
+      if (!response.ok || !data || !data.ok) return;
+      submissionSchedules.length = 0;
+      data.schedules.forEach((item) => {
+        submissionSchedules.push({ section: item.section, submissionDay: item.submission_day });
+      });
+      renderScheduleTable();
+      return true;
+    };
+
+    const loadWeeklyJournal = async (section) => {
+      if (!section) {
+        if (attendanceWeeksModal) {
+          attendanceWeeksModal.innerHTML = '<p class="calendar-note">No section selected.</p>';
+        }
+        if (attendanceSubmissionModal) attendanceSubmissionModal.value = 'Not set';
+        return;
+      }
+      const month = Number(attendanceMonthModal?.value);
+      const year = Number(attendanceYearModal?.value);
+      const params = new URLSearchParams({ section, month: month + 1, year });
+      const response = await fetch(`${weeklyJournalUrl}?${params.toString()}`, {
+        headers: { "X-Requested-With": "XMLHttpRequest" },
+      });
+      const data = await response.json().catch(() => null);
+      if (!response.ok || !data || !data.ok) return;
+      const weeks = data.weeks || [];
+      const submissionDay = weeks[0]?.submission_day || getSubmissionDayForSection(section);
+      if (attendanceSubmissionModal) {
+        attendanceSubmissionModal.value = submissionDay ? scheduleDays[submissionDay] : 'Not set';
+      }
+      if (attendanceWeeksModal) {
+        attendanceWeeksModal.innerHTML = '';
+        if (weeks.length === 0) {
+          attendanceWeeksModal.innerHTML = '<p class="calendar-note">No weekly journal rows yet.</p>';
+          return;
+        }
+        weeks.forEach((week) => {
+          const weekLabel = `${ordinal(week.week_no)} week`;
+          const dueDate = week.due_date ? new Date(week.due_date) : null;
+          const formattedDate = dueDate ? `${monthNames[dueDate.getMonth()]} ${dueDate.getDate()}, ${dueDate.getFullYear()}` : 'No date';
+          const statusTextMap = {
+            late: 'Late',
+            on_time: 'On-time',
+            late_excused: 'Late (Valid Reason)',
+          };
+          const statusText = statusTextMap[week.status] || '';
+          const statusClass = week.status && week.status.startsWith('late') ? 'late' : 'on-time';
+          const noteText = (week.status_note || '').trim();
+          const row = document.createElement('div');
+          row.className = 'week-row';
+          row.innerHTML = `
+            <div class="week-label">${weekLabel}</div>
+            <div class="week-date">${formattedDate}</div>
+            <div class="week-status">
+              ${statusText ? `<span class="status-pill ${statusClass}">${statusText}</span>` : ''}
+              ${noteText ? `<span class="calendar-note" style="margin-left:8px;">${escapeHtml(noteText)}</span>` : ''}
+              <input type="checkbox" data-attendance-id="${week.id}" data-due-date="${week.due_date || ''}" ${week.submitted_at ? 'checked' : ''} />
+            </div>
+          `;
+          attendanceWeeksModal.appendChild(row);
+        });
+      }
+    };
+
+    if (scheduleForm && scheduleList) {
+      scheduleForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const sectionInput = scheduleSectionInput?.value.trim();
+        const dayValue = scheduleDaySelect?.value;
+        if (!sectionInput || !dayValue) return;
+        const sections = sectionInput.split(',').map(s => s.trim()).filter(s => s.length > 0);
+        setScheduleActionLoading(true, "Adding schedule...");
+        try {
+          for (const section of sections) {
+            const payload = new URLSearchParams();
+            payload.append("action", "add");
+            payload.append("section", section);
+            payload.append("submission_day", dayValue);
+            await fetch(schedulesUrl, {
+              method: "POST",
+              headers: {
+                "X-Requested-With": "XMLHttpRequest",
+                "X-CSRFToken": csrfToken || "",
+                "Content-Type": "application/x-www-form-urlencoded",
+              },
+              body: payload.toString(),
+            });
+          }
+          scheduleForm.reset();
+          await loadSchedules();
+          refreshModalAttendance();
+        } finally {
+          setScheduleActionLoading(false);
+        }
+      });
+
+      scheduleList.addEventListener('click', async (event) => {
+        const btn = event.target.closest('button[data-section]');
+        if (!btn) return;
+        const section = btn.dataset.section;
+        openConfirm(`Remove the schedule for section ${section}? This can't be undone.`, async () => {
+          setScheduleActionLoading(true, "Deleting schedule...");
+          try {
+            const payload = new URLSearchParams();
+            payload.append("action", "delete");
+            payload.append("section", section);
+            await fetch(schedulesUrl, {
+              method: "POST",
+              headers: {
+                "X-Requested-With": "XMLHttpRequest",
+                "X-CSRFToken": csrfToken || "",
+                "Content-Type": "application/x-www-form-urlencoded",
+              },
+              body: payload.toString(),
+            });
+            await loadSchedules();
+            refreshModalAttendance();
+          } finally {
+            setScheduleActionLoading(false);
+          }
+        });
+      });
+
+      scheduleList.addEventListener('change', (event) => {
+        if (event.target.matches('.schedule-select')) {
+          updateDeleteSelectedVisibility();
+          if (scheduleSelectAll) {
+            const checks = scheduleList.querySelectorAll('.schedule-select');
+            const checked = scheduleList.querySelectorAll('.schedule-select:checked');
+            scheduleSelectAll.checked = checks.length > 0 && checks.length === checked.length;
+          }
+        }
+      });
+    }
+
+    if (scheduleSelectAll && scheduleList) {
+      scheduleSelectAll.addEventListener('change', () => {
+        const checks = scheduleList.querySelectorAll('.schedule-select');
+        checks.forEach((box) => {
+          box.checked = scheduleSelectAll.checked;
+        });
+        updateDeleteSelectedVisibility();
+      });
+    }
+
+    if (deleteSelectedBtn && scheduleList) {
+      deleteSelectedBtn.addEventListener('click', async () => {
+        const selected = Array.from(scheduleList.querySelectorAll('.schedule-select:checked'))
+          .map((box) => box.dataset.section)
+          .filter(Boolean);
+        if (selected.length === 0) {
+          showAlert("Select at least one schedule to delete.", "error");
+          return;
+        }
+        openConfirm(`Delete ${selected.length} schedule(s)? This can't be undone.`, async () => {
+          setScheduleActionLoading(true, "Deleting selected schedules...");
+          try {
+            for (const section of selected) {
+              const payload = new URLSearchParams();
+              payload.append("action", "delete");
+              payload.append("section", section);
+              await fetch(schedulesUrl, {
+                method: "POST",
+                headers: {
+                  "X-Requested-With": "XMLHttpRequest",
+                  "X-CSRFToken": csrfToken || "",
+                  "Content-Type": "application/x-www-form-urlencoded",
+                },
+                body: payload.toString(),
+              });
+            }
+            await loadSchedules();
+            refreshModalAttendance();
+            showAlert("Selected schedules deleted.", "success");
+          } finally {
+            setScheduleActionLoading(false);
+          }
+        });
+      });
+    }
+
+    if (attendanceWeeksModal) {
+      attendanceWeeksModal.addEventListener('change', async (event) => {
+        const checkbox = event.target.closest('input[type="checkbox"][data-attendance-id]');
+        if (!checkbox) return;
+        const dueDate = checkbox.dataset.dueDate ? new Date(checkbox.dataset.dueDate) : null;
+        const today = new Date();
+        const isLate = checkbox.checked && dueDate && (today.setHours(0,0,0,0), today > dueDate);
+        if (isLate) {
+          const lateChoice = await openLateStatusChoice();
+          if (!lateChoice) {
+            checkbox.checked = false;
+            return;
+          }
+          checkbox.disabled = true;
+          await submitWeeklyJournalCheck(checkbox, lateChoice.statusOverride, lateChoice.statusNote);
+          return;
+        }
+        if (!checkbox.checked) {
+          openConfirm("Clear this submission? This will remove the check and status.", async () => {
+            checkbox.disabled = true;
+            await submitWeeklyJournalCheck(checkbox);
+          });
+          return;
+        }
+        checkbox.disabled = true;
+        await submitWeeklyJournalCheck(checkbox);
+      });
+    }
+
+    const submitWeeklyJournalCheck = async (checkbox, statusOverride = "", statusNote = "") => {
+        const payload = new URLSearchParams();
+        payload.append("attendance_id", checkbox.dataset.attendanceId);
+        payload.append("checked", checkbox.checked ? "true" : "false");
+        if (statusOverride) payload.append("status_override", statusOverride);
+        if (statusNote) payload.append("status_note", statusNote);
+        const response = await fetch(weeklyJournalCheckUrl, {
+          method: "POST",
+          headers: {
+            "X-Requested-With": "XMLHttpRequest",
+            "X-CSRFToken": csrfToken || "",
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+          body: payload.toString(),
+        });
+        const data = await response.json().catch(() => null);
+        if (!response.ok || !data || !data.ok) {
+          showAlert(data?.message || "Weekly journal update failed.", "error");
+          checkbox.checked = !checkbox.checked;
+          checkbox.disabled = false;
+          return;
+        }
+        if (checkbox.checked && data.status === "late_excused") {
+          showAttendanceAlert("Marked as late (valid reason).", "success");
+        } else if (checkbox.checked && data.status === "late") {
+          showAttendanceAlert("Marked as late.", "success");
+        } else if (checkbox.checked) {
+          showAttendanceAlert("Marked as submitted.", "success");
+        } else {
+          showAttendanceAlert("Submission cleared.", "success");
+        }
+        await loadSchedules();
+        refreshModalAttendance();
+        checkbox.disabled = false;
+    };
+
+    Object.values(dtrInputs).forEach((input) => {
+      if (!input) return;
+      input.addEventListener('input', updateDtrSummary);
+    });
+
+    if (dtrSaveBtn) {
+      dtrSaveBtn.addEventListener('click', async () => {
+        await saveDtrHours(currentModalStudentId);
+      });
+    }
+
+    if (dtrSaveBtn) {
+      dtrSaveBtn.addEventListener('click', () => {
+        saveDtrHours(currentModalStudentId);
+      });
+    }
+
+    // Add Enter key listener for DTR inputs
+    Object.values(dtrInputs).forEach(input => {
+      if (!input) return;
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          saveDtrHours(currentModalStudentId);
+        }
+      });
+    });
+
+    buildAttendanceSelectors(attendanceMonthModal, attendanceYearModal);
+    loadSchedules();
+    if (attendanceMonthModal) {
+      attendanceMonthModal.addEventListener('change', () => {
+        refreshModalAttendance();
+      });
+    }
+    if (attendanceYearModal) {
+      attendanceYearModal.addEventListener('change', () => {
+        refreshModalAttendance();
+      });
+    }
+
+  </script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const populateSchoolYears = (selectorId, currentValue) => {
+        const select = document.getElementById(selectorId);
+        if (!select) return;
+        
+        const now = new Date();
+        const currentYear = now.getFullYear();
+        const effectiveCurrentYear = now.getMonth() < 6 ? currentYear - 1 : currentYear;
+        const BASE_YEAR = 2025;
+        const FUTURE_BUFFER = 2;
+        const endYear = Math.max(BASE_YEAR, effectiveCurrentYear + FUTURE_BUFFER);
+        
+        const years = [];
+        for (let y = BASE_YEAR; y <= endYear; y++) {
+          years.push(`${y} - ${y + 1}`);
+        }
+
+        if (currentValue && !years.includes(currentValue)) {
+          years.unshift(currentValue);
+        }
+
+        const placeholder = select.options[0];
+        select.innerHTML = '';
+        select.appendChild(placeholder);
+
+        years.reverse().forEach(year => {
+          const option = document.createElement('option');
+          option.value = year;
+          option.textContent = year;
+          if (year === currentValue) option.selected = true;
+          select.appendChild(option);
+        });
+      };
+
+      const syFilter = document.getElementById('school_year_filter');
+      if (syFilter) {
+        populateSchoolYears('school_year_filter', syFilter.dataset.selected);
+      }
+
+      const navBtn = document.querySelector('.nav-btn');
+      const closeBtn = document.querySelector('.close-btn');
+      const backdrop = document.querySelector('.sidebar-backdrop');
+      const body = document.body;
+
+      function openSidebar() {
+        body.classList.add('sidebar-open');
+      }
+
+      function closeSidebar() {
+        body.classList.remove('sidebar-open');
+      }
+
+      if (navBtn) {
+        navBtn.addEventListener('click', openSidebar);
+      }
+
+      if (closeBtn) {
+        closeBtn.addEventListener('click', closeSidebar);
+      }
+
+      if (backdrop) {
+        backdrop.addEventListener('click', closeSidebar);
+      }
+
+    });
+  </script>
+</body>
+</html>
