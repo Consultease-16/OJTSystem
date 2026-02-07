@@ -338,28 +338,7 @@
 </head>
 <body>
   <div class="shell">
-    <header class="top-header">
-      <div class="top-inner">
-        <div class="left-cluster">
-          <button class="nav-btn" type="button" aria-label="Open navigation">
-            <span></span>
-          </button>
-          <div class="brand-logo-and-title">
-            <div class="brand-logo">
-              <img src="{% static 'images/icslis-logo.png' %}" alt="ICSLIS logo" />
-            </div>
-            <div class="site-title-left">
-              <h1>ICSLIS OJT System</h1>
-              <p>Institute of Computing Studies and Library Information Science</p>
-            </div>
-          </div>
-        </div>
-        <div class="header-meta">
-          <span>{% if role == "coordinator" %}Practicum Coordinator{% elif role == "instructor" %}Practicum Instructor{% else %}{{ role|title }}{% endif %}</span>
-          <strong>{{ account.first_name }}{% if account.middle_initial %} {{ account.middle_initial }}.{% endif %} {{ account.last_name }}</strong>
-        </div>
-      </div>
-    </header>
+    {% include "partials/staff_header.html" %}
 
     {% include "partials/staff_sidebar.html" %}
 
