@@ -4,3 +4,21 @@ duck dns token
 fd42c367-e4b2-46fa-a14f-43e419b591db
 
 
+SECRET_KEY=YJ0eBfstTI1ePnqYs3epikAZdfe5mAVNj6Ncdavo6YnAHXvP9_HmvTOVcFqvqt7ShDg
+DEBUG=false
+ALLOWED_HOSTS=icslisojt.loca.lt,localhost,127.0.0.1
+CSRF_TRUSTED_ORIGINS=https://icslisojt.loca.lt
+
+DATABASE_URL=postgresql://postgres.ungadfoqlioahtjqudvt:OJTSystem2026@aws-1-ap-northeast-2.pooler.supabase.com:5432/postgres
+
+EMAIL_HOST=smtp.gmail.com
+EMAIL_PORT=587
+EMAIL_USE_TLS=true
+EMAIL_HOST_USER=rnunag22-1635@cca.edu.ph
+EMAIL_HOST_PASSWORD=ynxq aldn rbzk bwyw
+DEFAULT_FROM_EMAIL=ICSLIS OJT System <rnunag22-1635@cca.edu.ph>
+
+SUPABASE_URL=https://ungadfoqlioahtjqudvt.supabase.co
+SUPABASE_SERVICE_ROLE_KEY= eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVuZ2FkZm9xbGlvYWh0anF1ZHZ0Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2OTY4NjYwNSwiZXhwIjoyMDg1MjYyNjA1fQ.NKYj2qaYh_sclnyxcoMo5UchOUyonJTJByOpcTaYqZw
+SUPABASE_BUCKET=OJTSystemProfile
+
