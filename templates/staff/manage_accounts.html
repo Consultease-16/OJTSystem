@@ -8,6 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@400;600;700&family=Work+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="{% static 'css/staff_header.css' %}?v=2" />
   <style>
     :root {
       --ink: #0a0a0c;
@@ -36,207 +37,6 @@
 
     .shell { min-height: 100vh; }
 
-    /* Header Styles - Preserved */
-    .top-header {
-      position: sticky;
-      top: 0;
-      z-index: 10;
-      background: linear-gradient(160deg, rgba(15, 43, 82, 0.98), rgba(10, 10, 12, 0.98));
-      color: #f4f6f9;
-      padding: 16px 28px;
-      box-shadow: 0 18px 36px rgba(8, 10, 18, 0.25);
-    }
-
-    .top-inner {
-      max-width: 1200px;
-      margin: 0 auto;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 18px;
-      min-height: 96px;
-    }
-
-    .left-cluster {
-      display: inline-flex;
-      align-items: center;
-      gap: 14px;
-    }
-
-    .nav-btn {
-      width: 46px;
-      height: 46px;
-      border-radius: 16px;
-      border: 1px solid rgba(217, 182, 90, 0.6);
-      background: rgba(15, 43, 82, 0.45);
-      color: #f4f6f9;
-      display: grid;
-      place-items: center;
-      cursor: pointer;
-      transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
-    }
-
-    .nav-btn:hover {
-      border-color: rgba(217, 182, 90, 0.9);
-      background: rgba(15, 43, 82, 0.6);
-    }
-
-    .nav-btn:active { transform: translateY(1px); }
-
-    .nav-btn span,
-    .nav-btn span::before,
-    .nav-btn span::after {
-      content: "";
-      display: block;
-      width: 18px;
-      height: 2px;
-      background: currentColor;
-      border-radius: 999px;
-      transition: transform 0.2s ease;
-    }
-
-    .nav-btn span::before { transform: translateY(-6px); }
-    .nav-btn span::after { transform: translateY(4px); }
-
-    .brand-logo-and-title {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-
-    .brand-logo {
-      width: 46px;
-      height: 46px;
-      border-radius: 14px;
-      overflow: hidden;
-      border: 2px solid rgba(217, 182, 90, 0.85);
-      box-shadow: 0 0 0 4px rgba(217, 182, 90, 0.18);
-    }
-
-    .brand-logo img { width: 100%; height: 100%; object-fit: cover; }
-
-    .site-title-left {
-      display: grid;
-      gap: 4px;
-      text-align: left;
-    }
-
-    .site-title-left h1 {
-      margin: 0;
-      font-family: "Fraunces", serif;
-      font-size: clamp(22px, 2.6vw, 30px);
-    }
-
-    .site-title-left p {
-      margin: 0;
-      font-size: 13px;
-      color: rgba(244, 246, 249, 0.75);
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-    }
-
-    .header-meta {
-      display: grid;
-      gap: 6px;
-      text-align: right;
-      font-size: 12px;
-      color: rgba(244, 246, 249, 0.7);
-      align-items: center;
-    }
-
-    .header-meta strong {
-      font-size: 14px;
-      color: #f4f6f9;
-    }
-
-    /* Sidebar - Preserved/Updated */
-    .sidebar {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 260px;
-      height: 100%;
-      background: #ffffff;
-      box-shadow: 8px 0 22px rgba(8, 9, 12, 0.18);
-      padding: 24px;
-      z-index: 100;
-      transform: translateX(-100%);
-      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    }
-
-    .sidebar-open .sidebar { transform: translateX(0); }
-
-    .sidebar-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 24px;
-      padding-bottom: 16px;
-      border-bottom: 1px solid var(--line);
-    }
-
-    .sidebar-header h3 {
-      margin: 0;
-      font-size: 18px;
-      font-family: "Fraunces", serif;
-      color: var(--accent);
-    }
-
-    .close-btn {
-      border: none;
-      background: transparent;
-      font-size: 24px;
-      cursor: pointer;
-      color: var(--muted);
-      transition: color 0.2s;
-    }
-
-    .close-btn:hover { color: var(--accent); }
-
-    .sidebar-nav {
-      list-style: none;
-      padding: 0;
-      margin: 0;
-      display: grid;
-      gap: 8px;
-    }
-
-    .sidebar-nav a {
-      display: flex;
-      align-items: center;
-      text-decoration: none;
-      color: var(--ink);
-      font-weight: 500;
-      padding: 12px 16px;
-      border-radius: 12px;
-      transition: all 0.2s ease;
-    }
-
-    .sidebar-nav a:hover {
-      background: #f0f4f8;
-      color: var(--accent);
-      transform: translateX(4px);
-    }
-
-    .sidebar-backdrop {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(10, 10, 12, 0.4);
-      backdrop-filter: blur(2px);
-      z-index: 99;
-      opacity: 0;
-      visibility: hidden;
-      transition: opacity 0.3s ease, visibility 0.3s ease;
-    }
-
-    .sidebar-open .sidebar-backdrop {
-      opacity: 1;
-      visibility: visible;
-    }
-
     /* Content & Layout */
     .content {
       max-width: 1280px;
@@ -255,6 +55,7 @@
       display: grid;
       gap: 24px;
       transition: box-shadow 0.3s ease, transform 0.3s ease;
+      scroll-margin-top: 96px;
     }
 
     .panel:hover {
@@ -279,6 +80,15 @@
       background: var(--accent-2);
       border-radius: 3px;
     }
+
+    .section-jump {
+      max-width: 360px;
+      display: grid;
+      gap: 8px;
+    }
+
+    .section-panel { display: none; }
+    .section-panel.is-active { display: grid; }
 
     /* Alerts */
     .alert {
@@ -330,7 +140,7 @@
       display: none;
       align-items: center;
       justify-content: center;
-      z-index: 200;
+      z-index: 1150;
       padding: 20px;
     }
 
@@ -513,6 +323,8 @@
     .actions-cell { text-align: right; }
 
     /* Modal Styles */
+    .no-scroll { overflow: hidden; }
+
     .modal-backdrop {
       position: fixed;
       top: 0;
@@ -520,13 +332,12 @@
       width: 100%;
       height: 100%;
       background: rgba(10, 10, 12, 0.5);
-      z-index: 200;
+      z-index: 1150;
       display: flex;
       justify-content: center;
       align-items: center;
       padding: 20px;
       backdrop-filter: blur(2px);
-      overflow-y: auto;
     }
 
     .modal {
@@ -537,7 +348,6 @@
       box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
       overflow: hidden;
       animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-      max-height: calc(100vh - 40px);
     }
 
     @keyframes slideUp {
@@ -550,33 +360,11 @@
       border: none;
       padding: 32px;
       margin: 0;
-      max-height: calc(100vh - 40px);
-      overflow-y: auto;
-      -webkit-overflow-scrolling: touch;
     }
 
     @media (max-width: 900px) {
-      .top-inner { flex-wrap: wrap; justify-content: space-between; gap: 12px; }
-      .header-meta { display: none; }
       .content { padding: 24px; }
       .form-grid { grid-template-columns: 1fr; }
-    }
-
-    @media (max-width: 600px) {
-      .top-header { padding: 12px 16px; }
-      .top-inner { flex-direction: column; align-items: flex-start; min-height: auto; }
-      .left-cluster { width: 100%; flex-wrap: wrap; }
-      .site-title-left p { display: none; }
-      .header-meta { width: 100%; text-align: left; }
-      .content { padding: 16px; }
-      .panel { padding: 16px; }
-      .form-actions { flex-direction: column; align-items: stretch; }
-      .btn { width: 100%; }
-      .table-tools { grid-template-columns: 1fr; }
-      .sidebar { width: min(80vw, 300px); }
-      .modal-backdrop { align-items: flex-start; padding: 16px; }
-      .modal { max-height: calc(100vh - 32px); border-radius: 16px; }
-      .modal .panel { padding: 20px; max-height: calc(100vh - 32px); }
     }
   </style>
 </head>
@@ -589,6 +377,15 @@
     <main class="content">
       <section class="panel" id="message_panel">
         <h2>Manage Accounts</h2>
+        <div class="section-jump">
+          <label for="section_jump" style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;">Jump to section</label>
+          <select id="section_jump">
+            <option value="">Select section…</option>
+            <option value="add_account_panel" selected>Add Account</option>
+            <option value="students_panel">Students</option>
+            <option value="instructors_panel">Practicum Instructors</option>
+          </select>
+        </div>
         {% if message %}
         <div class="alert {% if message_type %}{{ message_type }}{% endif %}">
           <span>{{ message }}</span>
@@ -597,7 +394,7 @@
         {% endif %}
       </section>
 
-      <section class="panel">
+      <section class="panel section-panel" id="add_account_panel">
         <h2>Add Account</h2>
         <div class="form-grid" style="margin-bottom: 24px; max-width: 400px;">
           <div class="form-group">
@@ -663,7 +460,7 @@
         </form>
       </section>
 
-      <section class="panel">
+      <section class="panel section-panel" id="students_panel">
         <h2>Students</h2>
         <div class="table-tools">
           <div class="form-group">
@@ -704,7 +501,7 @@
                   data-student-school-year="{{ s.school_year|default_if_none:'' }}"
                   data-student-search="{{ s.student_no }} {{ s.cca_email }} {{ s.last_name }} {{ s.first_name }} {{ s.second_name|default_if_none:'' }} {{ s.middle_initial|default_if_none:'' }} {{ s.section }} {{ s.program }} {{ s.school_year|default_if_none:'' }}">
                 <td>{{ s.student_no }}</td>
-                <td>{{ s.first_name }}{% if s.middle_initial %} {{ s.middle_initial }}.{% endif %} {{ s.last_name }}</td>
+                <td>{{ s.first_name }}{% if s.second_name %} {{ s.second_name }}{% endif %}{% if s.middle_initial %} {{ s.middle_initial }}.{% endif %} {{ s.last_name }}</td>
                 <td>{{ s.section }}</td>
                 <td>{{ s.program }}</td>
                 <td>{{ s.school_year }}</td>
@@ -725,7 +522,7 @@
         </div>
       </section>
 
-      <section class="panel">
+      <section class="panel section-panel" id="instructors_panel">
         <h2>Practicum Instructors</h2>
         <div class="table-tools">
           <div class="form-group">
@@ -747,7 +544,7 @@
               {% for i in instructors %}
               <tr data-instructor-id="{{ i.id }}"
                   data-instructor-search="{{ i.cca_email }} {{ i.last_name }} {{ i.first_name }} {{ i.second_name|default_if_none:'' }} {{ i.middle_initial|default_if_none:'' }}">
-                <td>{{ i.first_name }}{% if i.middle_initial %} {{ i.middle_initial }}.{% endif %} {{ i.last_name }}</td>
+                <td>{{ i.first_name }}{% if i.second_name %} {{ i.second_name }}{% endif %}{% if i.middle_initial %} {{ i.middle_initial }}.{% endif %} {{ i.last_name }}</td>
                 <td>{{ i.cca_email }}</td>
                 <td>{{ i.active_status|yesno:"Active,Inactive" }}</td>
                 <td><a class="btn secondary" href="?edit_type=instructor&edit_id={{ i.id }}">Edit</a></td>
@@ -925,6 +722,30 @@
       if (closeBtn) closeBtn.addEventListener('click', closeSidebar);
       if (backdrop) backdrop.addEventListener('click', closeSidebar);
 
+      const sectionJump = document.getElementById('section_jump');
+      const sectionPanels = Array.from(document.querySelectorAll('.section-panel'));
+      const activatePanel = (panelId) => {
+        sectionPanels.forEach((panel) => {
+          panel.classList.toggle('is-active', panel.id === panelId);
+        });
+        const target = document.getElementById(panelId);
+        if (target) {
+          target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      };
+      if (sectionJump) {
+        activatePanel(sectionJump.value || 'add_account_panel');
+        sectionJump.addEventListener('change', () => {
+          const targetId = sectionJump.value || 'add_account_panel';
+          activatePanel(targetId);
+        });
+      }
+
+      // Handle initial modal states
+      if (document.getElementById('edit_modal') || document.getElementById('error_modal')) {
+        document.body.classList.add('no-scroll');
+      }
+
       const typeSelector = document.getElementById('account_type_selector');
       const accountAction = document.getElementById('account_action');
       const addAccountBtn = document.getElementById('add_account_btn');
@@ -968,10 +789,12 @@
     if (errorModal && closeErrorModal) {
       closeErrorModal.addEventListener("click", () => {
         errorModal.remove();
+        document.body.classList.remove('no-scroll');
       });
       errorModal.addEventListener("click", (e) => {
         if (e.target === errorModal) {
           errorModal.remove();
+          document.body.classList.remove('no-scroll');
         }
       });
     }
@@ -991,6 +814,7 @@
       if (modal) {
         modal.remove();
       }
+      document.body.classList.remove('no-scroll');
       const url = new URL(window.location.href);
       url.searchParams.delete('edit_type');
       url.searchParams.delete('edit_id');
@@ -1128,12 +952,13 @@
       if (data.type === 'student') {
         const tbody = document.getElementById('students_tbody');
         if (tbody) {
+          const secondName = data.record.second_name ? ` ${data.record.second_name}` : '';
           const mi = data.record.middle_initial ? ` ${data.record.middle_initial}.` : '';
           const existing = document.querySelector(`tr[data-student-id="${data.record.id}"]`);
           if (existing) {
             existing.innerHTML = `
               <td>${data.record.student_no}</td>
-              <td>${data.record.first_name}${mi} ${data.record.last_name}</td>
+              <td>${data.record.first_name}${secondName}${mi} ${data.record.last_name}</td>
               <td>${data.record.section}</td>
               <td>${data.record.program}</td>
               <td>${data.record.school_year || ''}</td>
@@ -1152,7 +977,7 @@
             row.dataset.studentSearch = `${data.record.student_no} ${data.record.cca_email} ${data.record.last_name} ${data.record.first_name} ${data.record.second_name || ''} ${data.record.middle_initial || ''} ${data.record.section} ${data.record.program} ${data.record.school_year || ''}`;
             row.innerHTML = `
               <td>${data.record.student_no}</td>
-              <td>${data.record.first_name}${mi} ${data.record.last_name}</td>
+              <td>${data.record.first_name}${secondName}${mi} ${data.record.last_name}</td>
               <td>${data.record.section}</td>
               <td>${data.record.program}</td>
               <td>${data.record.school_year || ''}</td>
@@ -1172,11 +997,12 @@
       if (data.type === 'instructor') {
         const tbody = document.getElementById('instructors_tbody');
         if (tbody) {
+          const secondName = data.record.second_name ? ` ${data.record.second_name}` : '';
           const mi = data.record.middle_initial ? ` ${data.record.middle_initial}.` : '';
           const existing = document.querySelector(`tr[data-instructor-id="${data.record.id}"]`);
           if (existing) {
             existing.innerHTML = `
-              <td>${data.record.first_name}${mi} ${data.record.last_name}</td>
+              <td>${data.record.first_name}${secondName}${mi} ${data.record.last_name}</td>
               <td>${data.record.cca_email}</td>
               <td>${data.record.active_status ? 'Active' : 'Inactive'}</td>
               <td><a class="btn secondary" href="?edit_type=instructor&edit_id=${data.record.id}">Edit</a></td>
@@ -1187,7 +1013,7 @@
             row.setAttribute('data-instructor-id', data.record.id);
             row.dataset.instructorSearch = `${data.record.cca_email} ${data.record.last_name} ${data.record.first_name} ${data.record.second_name || ''} ${data.record.middle_initial || ''}`;
             row.innerHTML = `
-              <td>${data.record.first_name}${mi} ${data.record.last_name}</td>
+              <td>${data.record.first_name}${secondName}${mi} ${data.record.last_name}</td>
               <td>${data.record.cca_email}</td>
               <td>${data.record.active_status ? 'Active' : 'Inactive'}</td>
               <td><a class="btn secondary" href="?edit_type=instructor&edit_id=${data.record.id}">Edit</a></td>
@@ -1259,6 +1085,7 @@
         existing.remove();
       }
       document.body.appendChild(newModal);
+      document.body.classList.add('no-scroll');
       const incoming = new URL(url, window.location.origin);
       const newUrl = new URL(window.location.href);
       const editType = incoming.searchParams.get('edit_type') || '';

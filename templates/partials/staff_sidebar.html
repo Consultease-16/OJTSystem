@@ -5,10 +5,14 @@
   </div>
   <ul class="sidebar-nav">
     <li><a href="{% url 'staff_home' %}">Home</a></li>
-    <li><a href="{% url 'manage_records' %}">Manage Records</a></li>
+    <li><a href="{% url 'staff_profile' %}">Profile</a></li>
+    {% if role == "coordinator" %}
     <li><a href="{% url 'company_checklist' %}">Company Checklist</a></li>
     <li><a href="{% url 'manage_accounts' %}">Manage Accounts</a></li>
-    <li><a href="{% url 'staff_profile' %}">Profile</a></li>
+    <li><a href="{% url 'manage_records' %}">Manage Records</a></li>
+    {% elif role == "instructor" %}
+    <li><a href="{% url 'instructor_sections' %}">Handled Sections</a></li>
+    {% endif %}
     <li><a href="{% url 'logout' %}">Logout</a></li>
   </ul>
 </nav>

@@ -1,6 +1,5 @@
 import secrets
 import datetime
-import json
 from email.mime.image import MIMEImage
 from pathlib import Path
 
@@ -410,11 +409,352 @@ def staff_home(request):
         request.session.pop("account_type", None)
         return redirect("front_page")
 
-    response = render(request, "staff/staff_home.html", {"account": account, "role": account_type})
+    context = {"account": account, "role": account_type}
+
+    if account_type == "instructor":
+        _ensure_section_instructor_tables()
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                select sl.id, sl.section, sl.school_year
+                from section_instructors si
+                join section_list sl on sl.id = si.section_id
+                where si.instructor_id = %s
+                order by sl.school_year desc, sl.section asc
+                """,
+                [account_id],
+            )
+            assigned_rows = cursor.fetchall()
+            assigned_sections = [
+                {"section_id": row[0], "section": row[1], "school_year": row[2]}
+                for row in assigned_rows
+            ]
+
+            cursor.execute(
+                """
+                select
+                  sr.student_id,
+                  sr.student_no,
+                  sr.first_name,
+                  sr.second_name,
+                  sr.middle_initial,
+                  sr.last_name,
+                  sr.section,
+                  sr.school_year,
+                  coalesce(
+                    dtr.january_hours, 0
+                  ) + coalesce(
+                    dtr.february_hours, 0
+                  ) + coalesce(
+                    dtr.march_hours, 0
+                  ) + coalesce(
+                    dtr.april_hours, 0
+                  ) + coalesce(
+                    dtr.may_hours, 0
+                  ) + coalesce(
+                    dtr.june_hours, 0
+                  ) as total_hours,
+                  (
+                    sr.practicum_application
+                    and sr.letter_of_intent
+                    and sr.endorsement_letter
+                    and sr.practicum_parental_consent
+                    and sr.acceptance_form
+                    and sr.reply_form
+                    and sr.practicum_training_agreement
+                    and sr.attendance_sheet
+                    and sr.weekly_journal
+                    and sr.transmittal_form
+                    and sr.evaluation_form
+                    and sr.outreach_program_design
+                    and sr.outreach_post_activity_report
+                    and sr.ojt_log_sheet
+                    and sr.requirements_checklist
+                    and sr.cca_hymn
+                  ) as requirements_done
+                from section_instructors si
+                join section_list sl on sl.id = si.section_id
+                join student_requirements sr
+                  on sr.section = sl.section and sr.school_year = sl.school_year
+                left join attendance_sheet_dtr dtr on dtr.student_id = sr.student_id
+                where si.instructor_id = %s
+                order by sr.last_name, sr.first_name
+                """,
+                [account_id],
+            )
+            student_rows = cursor.fetchall()
+            instructor_students = []
+            for row in student_rows:
+                full_name_parts = [row[2]]
+                if row[3] and str(row[3]).lower() not in {"none", "null"}:
+                    full_name_parts.append(row[3])
+                if row[4] and str(row[4]).lower() not in {"none", "null"}:
+                    full_name_parts.append(f"{row[4]}.")
+                full_name_parts.append(row[5])
+                instructor_students.append(
+                    {
+                        "student_id": row[0],
+                        "student_no": row[1],
+                        "name": " ".join(part for part in full_name_parts if part),
+                        "section": row[6],
+                        "school_year": row[7],
+                        "total_hours": row[8] or 0,
+                        "requirements_done": bool(row[9]),
+                    }
+                )
+
+        total_sections = len(assigned_sections)
+        total_students = len(instructor_students)
+        total_completed = sum(1 for s in instructor_students if s["requirements_done"])
+        total_hours = sum(int(s["total_hours"] or 0) for s in instructor_students)
+
+        context.update(
+            {
+                "assigned_sections": assigned_sections,
+                "instructor_students": instructor_students,
+                "instructor_summary": {
+                    "total_sections": total_sections,
+                    "total_students": total_students,
+                    "completed_requirements": total_completed,
+                    "total_hours": total_hours,
+                },
+            }
+        )
+
+    response = render(request, "staff/staff_home.html", context)
     response["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
     response["Pragma"] = "no-cache"
     response["Expires"] = "0"
     return response
+
+
+def _build_instructor_section_detail(cursor, section, school_year):
+    school_year_start = None
+    try:
+        school_year_start = int(str(school_year).split("-")[0].strip())
+    except (ValueError, TypeError):
+        school_year_start = None
+
+    cursor.execute(
+        """
+        select
+          sr.student_id,
+          sr.student_no,
+          sr.first_name,
+          sr.second_name,
+          sr.middle_initial,
+          sr.last_name,
+          sr.program,
+          sr.practicum_application,
+          sr.letter_of_intent,
+          sr.endorsement_letter,
+          sr.practicum_parental_consent,
+          sr.acceptance_form,
+          sr.reply_form,
+          sr.practicum_training_agreement,
+          sr.attendance_sheet,
+          sr.weekly_journal,
+          sr.transmittal_form,
+          sr.evaluation_form,
+          sr.outreach_program_design,
+          sr.outreach_post_activity_report,
+          sr.ojt_log_sheet,
+          sr.requirements_checklist,
+          sr.cca_hymn,
+          coalesce(dtr.january_hours, 0) as january_hours,
+          coalesce(dtr.february_hours, 0) as february_hours,
+          coalesce(dtr.march_hours, 0) as march_hours,
+          coalesce(dtr.april_hours, 0) as april_hours,
+          coalesce(dtr.may_hours, 0) as may_hours,
+          coalesce(dtr.june_hours, 0) as june_hours
+        from student_requirements sr
+        left join attendance_sheet_dtr dtr on dtr.student_id = sr.student_id
+        where sr.section = %s and sr.school_year = %s
+        order by sr.last_name, sr.first_name
+        """,
+        [section, school_year],
+    )
+    rows = cursor.fetchall()
+
+    students = []
+    requirement_rows = []
+    dtr_rows = []
+    for student_row in rows:
+        first_name = student_row[2]
+        second_name = student_row[3]
+        middle_initial = student_row[4]
+        last_name = student_row[5]
+
+        full_name_parts = [first_name]
+        if second_name and str(second_name).lower() not in {"none", "null"}:
+            full_name_parts.append(second_name)
+        if middle_initial and str(middle_initial).lower() not in {"none", "null"}:
+            full_name_parts.append(f"{middle_initial}.")
+        full_name_parts.append(last_name)
+        full_name = " ".join(part for part in full_name_parts if part)
+
+        january_hours = int(student_row[23] or 0)
+        february_hours = int(student_row[24] or 0)
+        march_hours = int(student_row[25] or 0)
+        april_hours = int(student_row[26] or 0)
+        may_hours = int(student_row[27] or 0)
+        june_hours = int(student_row[28] or 0)
+        total_hours = january_hours + february_hours + march_hours + april_hours + may_hours + june_hours
+
+        students.append(
+            {
+                "student_no": student_row[1],
+                "name": full_name,
+                "program": student_row[6],
+            }
+        )
+        requirement_rows.append(
+            {
+                "student_no": student_row[1],
+                "name": full_name,
+                "practicum_application": bool(student_row[7]),
+                "letter_of_intent": bool(student_row[8]),
+                "endorsement_letter": bool(student_row[9]),
+                "practicum_parental_consent": bool(student_row[10]),
+                "acceptance_form": bool(student_row[11]),
+                "reply_form": bool(student_row[12]),
+                "practicum_training_agreement": bool(student_row[13]),
+                "attendance_sheet": bool(student_row[14]),
+                "weekly_journal": bool(student_row[15]),
+                "transmittal_form": bool(student_row[16]),
+                "evaluation_form": bool(student_row[17]),
+                "outreach_program_design": bool(student_row[18]),
+                "outreach_post_activity_report": bool(student_row[19]),
+                "ojt_log_sheet": bool(student_row[20]),
+                "requirements_checklist": bool(student_row[21]),
+                "cca_hymn": bool(student_row[22]),
+            }
+        )
+        dtr_rows.append(
+            {
+                "student_no": student_row[1],
+                "name": full_name,
+                "january_hours": january_hours,
+                "february_hours": february_hours,
+                "march_hours": march_hours,
+                "april_hours": april_hours,
+                "may_hours": may_hours,
+                "june_hours": june_hours,
+                "total_hours": total_hours,
+            }
+        )
+
+    weekly_journal_rows = []
+    if school_year_start is not None:
+        cursor.execute(
+            """
+            select week_no, due_date, submitted_at, status, status_note
+            from weekly_journal
+            where section = %s and year = %s
+            order by week_no asc
+            """,
+            [section, school_year_start],
+        )
+        weekly_rows = cursor.fetchall()
+        weekly_journal_rows = [
+            {
+                "week_no": r[0],
+                "due_date": r[1].isoformat() if r[1] else "",
+                "submitted_at": r[2].isoformat() if r[2] else "",
+                "status": r[3] or ("passed" if r[2] else "pending"),
+                "status_note": r[4] or "",
+            }
+            for r in weekly_rows
+        ]
+
+    return {
+        "section": section,
+        "school_year": school_year,
+        "students": students,
+        "requirements": requirement_rows,
+        "weekly_journal": weekly_journal_rows,
+        "dtr": dtr_rows,
+    }
+
+
+@never_cache
+def instructor_sections(request):
+    account_id = request.session.get("account_id")
+    account_type = request.session.get("account_type")
+    if not account_id or account_type != "instructor":
+        request.session["flash_message"] = "Please log in as a practicum instructor to continue."
+        request.session["flash_message_type"] = "error"
+        return redirect("front_page")
+
+    account = PracticumInstructor.objects.filter(id=account_id).first()
+    if not account:
+        request.session.pop("account_id", None)
+        request.session.pop("account_type", None)
+        return redirect("front_page")
+
+    _ensure_section_instructor_tables()
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            select sl.id, sl.section, sl.school_year
+            from section_instructors si
+            join section_list sl on sl.id = si.section_id
+            where si.instructor_id = %s
+            order by sl.school_year desc, sl.section asc
+            """,
+            [account_id],
+        )
+        assigned_sections = [
+            {"section_id": str(row[0]), "section": row[1], "school_year": row[2]}
+            for row in cursor.fetchall()
+        ]
+
+    response = render(
+        request,
+        "staff/instructor_sections.html",
+        {
+            "account": account,
+            "role": account_type,
+            "assigned_sections": assigned_sections,
+        },
+    )
+    response["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    response["Pragma"] = "no-cache"
+    response["Expires"] = "0"
+    return response
+
+
+@never_cache
+def instructor_section_details(request, section_id):
+    account_id = request.session.get("account_id")
+    account_type = request.session.get("account_type")
+    if not account_id or account_type != "instructor":
+        return JsonResponse({"ok": False, "error": "Unauthorized"}, status=401)
+
+    account = PracticumInstructor.objects.filter(id=account_id).first()
+    if not account:
+        request.session.pop("account_id", None)
+        request.session.pop("account_type", None)
+        return JsonResponse({"ok": False, "error": "Unauthorized"}, status=401)
+
+    _ensure_section_instructor_tables()
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            select sl.section, sl.school_year
+            from section_instructors si
+            join section_list sl on sl.id = si.section_id
+            where si.instructor_id = %s and sl.id = %s
+            """,
+            [account_id, str(section_id)],
+        )
+        row = cursor.fetchone()
+        if not row:
+            return JsonResponse({"ok": False, "error": "Section not found"}, status=404)
+
+        details = _build_instructor_section_detail(cursor, row[0], row[1])
+
+    return JsonResponse({"ok": True, "data": details})
 
 
 @never_cache
@@ -461,6 +801,8 @@ def manage_records(request):
     where_sql = ""
     if where_clauses:
         where_sql = "where " + " and ".join(where_clauses)
+
+    _ensure_section_instructor_tables()
 
     with connection.cursor() as cursor:
         # Keep schema backward-compatible for DBs that have not run the latest SQL yet.
@@ -527,6 +869,93 @@ def manage_records(request):
         )
         columns = [col[0] for col in cursor.description]
         requirements = [dict(zip(columns, row)) for row in cursor.fetchall()]
+
+        cursor.execute(
+            """
+            insert into section_list (section, school_year)
+            select distinct section, school_year
+            from student_requirements
+            where section is not null and section <> ''
+              and school_year is not null and school_year <> ''
+            on conflict (section, school_year) do nothing
+            """
+        )
+        cursor.execute(
+            """
+            select
+              sl.id,
+              sl.section,
+              sl.school_year,
+              pi.id as instructor_id,
+              pi.first_name,
+              pi.last_name,
+              pi.second_name,
+              pi.middle_initial,
+              pc.id as coordinator_id,
+              pc.first_name as coord_first_name,
+              pc.last_name as coord_last_name,
+              pc.second_name as coord_second_name,
+              pc.middle_initial as coord_middle_initial
+            from section_list sl
+            left join section_instructors si on si.section_id = sl.id
+            left join practicum_instructors pi on pi.id = si.instructor_id
+            left join practicum_coordinators pc on pc.id = si.coordinator_id
+            order by sl.school_year desc, sl.section asc
+            """
+        )
+        assignment_rows = cursor.fetchall()
+        section_assignments = []
+        for row in assignment_rows:
+            # Instructor name
+            i_first, i_last, i_second, i_mi = row[4], row[5], row[6], row[7]
+            i_name_parts = []
+            if i_first: i_name_parts.append(i_first)
+            if i_second: i_name_parts.append(i_second)
+            if i_mi: i_name_parts.append(f"{i_mi}.")
+            if i_last: i_name_parts.append(i_last)
+            
+            # Coordinator name
+            c_first, c_last, c_second, c_mi = row[9], row[10], row[11], row[12]
+            c_name_parts = []
+            if c_first: c_name_parts.append(c_first)
+            if c_second: c_name_parts.append(c_second)
+            if c_mi: c_name_parts.append(f"{c_mi}.")
+            if c_last: c_name_parts.append(c_last)
+
+            section_assignments.append(
+                {
+                    "section_id": row[0],
+                    "section": row[1],
+                    "school_year": row[2],
+                    "instructor_id": row[3],
+                    "instructor_name": " ".join(i_name_parts).strip(),
+                    "coordinator_id": row[8],
+                    "coordinator_name": " ".join(c_name_parts).strip(),
+                }
+            )
+
+        cursor.execute(
+            """
+            select id, section, school_year
+            from section_list
+            order by school_year desc, section asc
+            """
+        )
+        sections = [
+            {"id": row[0], "section": row[1], "school_year": row[2]}
+            for row in cursor.fetchall()
+        ]
+
+    instructors = (
+        PracticumInstructor.objects
+        .filter(active_status=True)
+        .order_by("last_name", "first_name")
+    )
+    coordinators = (
+        PracticumCoordinator.objects
+        .filter(active_status=True)
+        .order_by("last_name", "first_name")
+    )
     response = render(
         request,
         "staff/manage_records.html",
@@ -537,12 +966,110 @@ def manage_records(request):
             "message_type": message_type,
             "requirements": requirements,
             "filters": {"q": search, "program": program, "school_year": school_year},
+            "section_assignments": section_assignments,
+            "sections": sections,
+            "instructors": instructors,
+            "coordinators": coordinators,
         },
     )
     response["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
     response["Pragma"] = "no-cache"
     response["Expires"] = "0"
     return response
+
+
+@never_cache
+def section_instructors_view(request):
+    if request.method != "POST":
+        return redirect("manage_records")
+
+    account_id = request.session.get("account_id")
+    account_type = request.session.get("account_type")
+    if not account_id or account_type not in {"coordinator", "instructor"}:
+        request.session["flash_message"] = "Please log in to continue."
+        request.session["flash_message_type"] = "error"
+        return redirect("front_page")
+
+    section_id = (request.POST.get("section_id") or "").strip()
+    staff_val = (request.POST.get("instructor_id") or "").strip()
+    
+    instructor_id = None
+    coordinator_id = None
+    
+    if staff_val.startswith("inst:"):
+        instructor_id = staff_val[5:]
+    elif staff_val.startswith("coord:"):
+        coordinator_id = staff_val[6:]
+    elif staff_val:
+        instructor_id = staff_val
+
+    if not section_id:
+        request.session["flash_message"] = "Please select a section."
+        request.session["flash_message_type"] = "error"
+        return redirect("manage_records")
+
+    _ensure_section_instructor_tables()
+
+    with connection.cursor() as cursor:
+        if instructor_id or coordinator_id:
+            cursor.execute(
+                """
+                insert into section_instructors (section_id, instructor_id, coordinator_id)
+                values (%s, %s, %s)
+                on conflict (section_id)
+                do update set 
+                    instructor_id = excluded.instructor_id,
+                    coordinator_id = excluded.coordinator_id
+                """,
+                [
+                    section_id, 
+                    instructor_id if instructor_id else None, 
+                    coordinator_id if coordinator_id else None
+                ],
+            )
+            request.session["flash_message"] = "Instructor assigned to section."
+            request.session["flash_message_type"] = "success"
+        else:
+            cursor.execute(
+                "delete from section_instructors where section_id = %s",
+                [section_id],
+            )
+            request.session["flash_message"] = "Assignment removed."
+            request.session["flash_message_type"] = "success"
+
+    return redirect("manage_records")
+
+
+def _ensure_section_instructor_tables():
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            create table if not exists section_list (
+              id uuid primary key default gen_random_uuid(),
+              section text not null,
+              school_year text not null,
+              created_at timestamptz not null default now(),
+              unique (section, school_year)
+            )
+            """
+        )
+        cursor.execute(
+            """
+            create table if not exists section_instructors (
+              id uuid primary key default gen_random_uuid(),
+              section_id uuid not null references section_list(id) on delete cascade,
+              instructor_id uuid references practicum_instructors(id) on delete cascade,
+              coordinator_id uuid references practicum_coordinators(id) on delete cascade,
+              assigned_at timestamptz not null default now(),
+              unique (section_id)
+            )
+            """
+        )
+        cursor.execute(
+            "alter table section_instructors add column if not exists coordinator_id uuid references practicum_coordinators(id) on delete cascade"
+        )
+        # Also make instructor_id nullable in case only coordinator is assigned
+        cursor.execute("alter table section_instructors alter column instructor_id drop not null")
 
 
 @never_cache

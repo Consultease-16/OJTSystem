@@ -9,6 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@400;600;700&family=Work+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="{% static 'css/staff_header.css' %}?v=2" />
   <style>
     :root {
       --ink: #0a0a0c;
@@ -32,197 +33,9 @@
                   radial-gradient(900px 700px at 90% 18%, rgba(15, 43, 82, 0.16) 0%, transparent 55%),
                   linear-gradient(150deg, #f6f7f9, #eef1f6 55%, #f8f9fb);
       min-height: 100vh;
-      padding: 0;
     }
 
     .shell { min-height: 100vh; }
-
-    .top-header {
-      position: sticky;
-      top: 0;
-      z-index: 5;
-      background: linear-gradient(160deg, rgba(15, 43, 82, 0.98), rgba(10, 10, 12, 0.98));
-      color: #f4f6f9;
-      padding: 16px 28px;
-      box-shadow: 0 18px 36px rgba(8, 10, 18, 0.25);
-    }
-
-    .top-inner {
-      max-width: 1200px;
-      margin: 0 auto;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 18px;
-      min-height: 96px;
-    }
-
-    .left-cluster {
-      display: inline-flex;
-      align-items: center;
-      gap: 14px;
-    }
-
-    .nav-btn {
-      width: 46px;
-      height: 46px;
-      border-radius: 16px;
-      border: 1px solid rgba(217, 182, 90, 0.6);
-      background: rgba(15, 43, 82, 0.45);
-      color: #f4f6f9;
-      display: grid;
-      place-items: center;
-      cursor: pointer;
-      transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
-    }
-
-    .nav-btn:hover {
-      border-color: rgba(217, 182, 90, 0.9);
-      background: rgba(15, 43, 82, 0.6);
-    }
-
-    .nav-btn:active { transform: translateY(1px); }
-
-    .nav-btn span,
-    .nav-btn span::before,
-    .nav-btn span::after {
-      content: "";
-      display: block;
-      width: 18px;
-      height: 2px;
-      background: currentColor;
-      border-radius: 999px;
-      transition: transform 0.2s ease;
-    }
-
-    .nav-btn span::before { transform: translateY(-6px); }
-    .nav-btn span::after { transform: translateY(4px); }
-
-    .sidebar {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 260px;
-      height: 100%;
-      background: #ffffff;
-      box-shadow: 8px 0 22px rgba(8, 9, 12, 0.18);
-      padding: 20px;
-      z-index: 100;
-      transform: translateX(-100%);
-      transition: transform 0.3s ease-in-out;
-    }
-
-    .sidebar-open .sidebar { transform: translateX(0); }
-
-    .sidebar-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 12px;
-    }
-
-    .sidebar-header h3 {
-      margin: 0;
-      font-size: 16px;
-      color: var(--accent);
-    }
-
-    .close-btn {
-      border: none;
-      background: transparent;
-      font-size: 20px;
-      cursor: pointer;
-      color: var(--muted);
-    }
-
-    .sidebar-nav {
-      list-style: none;
-      padding: 0;
-      margin: 0;
-      display: grid;
-      gap: 8px;
-    }
-
-    .sidebar-nav a {
-      display: block;
-      text-decoration: none;
-      color: var(--accent);
-      font-weight: 600;
-      padding: 10px 12px;
-      border-radius: 10px;
-      background: #f6f7fb;
-    }
-
-    .sidebar-nav a:hover { background: #eef1f6; }
-
-    .sidebar-backdrop {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(10, 10, 12, 0.5);
-      z-index: 99;
-      opacity: 0;
-      visibility: hidden;
-      transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
-    }
-
-    .sidebar-open .sidebar-backdrop {
-      opacity: 1;
-      visibility: visible;
-    }
-
-    .brand-logo-and-title {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-
-    .brand-logo {
-      width: 46px;
-      height: 46px;
-      border-radius: 14px;
-      overflow: hidden;
-      border: 2px solid rgba(217, 182, 90, 0.85);
-      box-shadow: 0 0 0 4px rgba(217, 182, 90, 0.18);
-    }
-
-    .brand-logo img { width: 100%; height: 100%; object-fit: cover; }
-
-    .site-title-left {
-      display: grid;
-      gap: 4px;
-      text-align: left;
-    }
-
-    .site-title-left h1 {
-      margin: 0;
-      font-family: "Fraunces", serif;
-      font-size: clamp(22px, 2.6vw, 30px);
-    }
-
-    .site-title-left p {
-      margin: 0;
-      font-size: 13px;
-      color: rgba(244, 246, 249, 0.75);
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-    }
-
-    .header-meta {
-      display: grid;
-      gap: 6px;
-      text-align: right;
-      font-size: 12px;
-      color: rgba(244, 246, 249, 0.7);
-      align-items: center;
-    }
-
-    .header-meta strong {
-      font-size: 14px;
-      color: #f4f6f9;
-    }
 
     .content {
       max-width: 1400px;
@@ -568,17 +381,26 @@
 
     .toggle-btn:active { transform: translateY(1px); }
 
+    /* Table & List Styling */
     .table-wrap {
-      overflow: auto;
-      border-radius: 16px;
+      width: 100%;
+      overflow-x: auto;
       border: 1px solid var(--line);
+      border-radius: 16px;
+      background: #fff;
+      -webkit-overflow-scrolling: touch;
     }
 
     table {
       width: 100%;
       border-collapse: collapse;
-      min-width: 1000px;
+      min-width: 900px; /* Prevent squashing */
       background: #fff;
+    }
+
+    @media (max-width: 900px) {
+      .filters { grid-template-columns: 1fr; gap: 10px; }
+      .filters input, .filters select, .filters button { width: 100%; }
     }
 
     thead th {
@@ -616,6 +438,10 @@
       color: var(--accent);
     }
 
+    .no-scroll {
+      overflow: hidden;
+    }
+
     /* Modal Styles */
     .modal-backdrop {
       position: fixed;
@@ -624,7 +450,7 @@
       width: 100%;
       height: 100%;
       background: rgba(10, 10, 12, 0.5);
-      z-index: 200;
+      z-index: 1150;
       display: flex;
       justify-content: center;
       align-items: center;
@@ -830,19 +656,24 @@
     }
 
     @media (max-width: 900px) {
-      .top-inner { flex-wrap: wrap; justify-content: space-between; gap: 12px; }
-      .header-meta { display: none; }
-      .filters { grid-template-columns: 1fr; }
+      .filters {
+        grid-template-columns: 1fr;
+        gap: 12px;
+      }
+      .filters button {
+        width: 100%;
+        margin-top: 4px;
+      }
+      .schedule-form {
+        grid-template-columns: 1fr;
+        align-items: stretch;
+      }
+      .schedule-form button {
+        margin-top: 8px;
+      }
     }
 
     @media (max-width: 600px) {
-      .top-header { padding: 12px 16px; }
-      .top-inner { flex-direction: column; align-items: flex-start; min-height: auto; gap: 10px; }
-      .left-cluster { width: 100%; flex-wrap: wrap; }
-      .brand-logo { width: 40px; height: 40px; border-radius: 12px; }
-      .site-title-left h1 { font-size: clamp(18px, 5vw, 24px); line-height: 1.1; }
-      .site-title-left p { display: none; }
-      .header-meta { width: 100%; text-align: left; }
       .content { padding: 16px; }
       .panel { padding: 16px; }
       .panel form { width: 100%; }
@@ -863,8 +694,15 @@
     {% include "partials/staff_sidebar.html" %}
 
     <main class="content">
-      <section class="panel">
-        <h2>Manage Records</h2>
+      <section class="panel" id="requirements_panel">
+        <div class="section-header" style="margin-bottom: 16px;">
+          <h2 style="margin: 0;">Student Requirements</h2>
+          <form method="post" action="{% url 'sync_student_requirements' %}" id="sync_students_form" style="display: flex; justify-content: flex-end;">
+            {% csrf_token %}
+            <button type="submit" id="sync_students_btn" style="padding: 8px 16px; font-size: 13px;">Pull Student Details</button>
+          </form>
+        </div>
+
         <div id="message_panel"></div>
         {% if message %}
         <div class="alert {% if message_type %}{{ message_type }}{% endif %}">
@@ -872,7 +710,8 @@
           <button class="close-alert" type="button" aria-label="Close alert">✕</button>
         </div>
         {% endif %}
-        <form class="filters" method="get" action="" id="records_filter_form">
+
+        <form class="filters" method="get" action="" id="records_filter_form" style="margin-bottom: 20px;">
           <input type="text" name="q" placeholder="Search student name or ID" value="{{ filters.q|default:'' }}" />
           <input type="text" name="program" placeholder="Section / Program" value="{{ filters.program|default:'' }}" />
           <select name="school_year" id="school_year_filter" data-selected="{{ filters.school_year|default:'' }}">
@@ -880,14 +719,7 @@
           </select>
           <button type="submit" id="records_search_btn">Search</button>
         </form>
-        <form method="post" action="{% url 'sync_student_requirements' %}" id="sync_students_form">
-          {% csrf_token %}
-          <button type="submit" id="sync_students_btn">Pull Student Details</button>
-        </form>
-      </section>
 
-      <section class="panel" id="requirements_panel">
-        <h2>Student Requirements</h2>
         <div class="table-wrap">
           <table>
             <thead>
@@ -983,6 +815,98 @@
                   <td colspan="6">No student records found.</td>
                 </tr>
               {% endif %}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel" id="section_instructors_panel">
+        <h2>Assigned Instructor</h2>
+        <form class="schedule-form" method="post" action="{% url 'section_instructors' %}">
+          {% csrf_token %}
+          <div class="field">
+            <label for="assignment_school_year">School Year</label>
+            <select id="assignment_school_year">
+              <option value="">Select School Year</option>
+              {% for item in sections %}
+                <option value="{{ item.school_year }}">{{ item.school_year }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="field">
+            <label for="assignment_section">Section</label>
+            <select id="assignment_section" name="section_id" required>
+              <option value="">Select Section</option>
+              {% for item in sections %}
+                <option value="{{ item.id }}" data-school-year="{{ item.school_year }}">{{ item.section }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="field">
+            <label for="assignment_instructor">Practicum Instructor</label>
+            <select id="assignment_instructor" name="instructor_id">
+              <option value="">Unassigned</option>
+              <optgroup label="Instructors">
+                {% for inst in instructors %}
+                  <option value="inst:{{ inst.id }}">
+                    {{ inst.first_name }}
+                    {% if inst.second_name and inst.second_name|lower != "none" and inst.second_name|lower != "null" %}
+                      {{ inst.second_name }}
+                    {% endif %}
+                    {% if inst.middle_initial and inst.middle_initial|lower != "none" and inst.middle_initial|lower != "null" %}
+                      {{ inst.middle_initial }}.
+                    {% endif %}
+                    {{ inst.last_name }}
+                  </option>
+                {% endfor %}
+              </optgroup>
+              <optgroup label="Coordinators">
+                {% for coord in coordinators %}
+                  <option value="coord:{{ coord.id }}">
+                    {{ coord.first_name }}
+                    {% if coord.second_name and coord.second_name|lower != "none" and coord.second_name|lower != "null" %}
+                      {{ coord.second_name }}
+                    {% endif %}
+                    {% if coord.middle_initial and coord.middle_initial|lower != "none" and coord.middle_initial|lower != "null" %}
+                      {{ coord.middle_initial }}.
+                    {% endif %}
+                    {{ coord.last_name }}
+                  </option>
+                {% endfor %}
+              </optgroup>
+            </select>
+          </div>
+          <button type="submit">Add Instructor</button>
+        </form>
+        <div class="table-wrap" style="margin-top: 16px;">
+          <table>
+            <thead>
+              <tr>
+                <th>Section</th>
+                <th>School Year</th>
+                <th>Instructor</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in section_assignments %}
+              <tr>
+                <td>{{ row.section }}</td>
+                <td>{{ row.school_year }}</td>
+                <td>
+                  {% if row.instructor_name %}
+                    <div style="font-weight: 500;">{{ row.instructor_name }}</div>
+                  {% elif row.coordinator_name %}
+                    <div style="font-weight: 500;">{{ row.coordinator_name }} <span style="font-size: 11px; color: var(--muted); font-weight: 400;">(Coordinator)</span></div>
+                  {% else %}
+                    <span style="color: var(--muted);">Unassigned</span>
+                  {% endif %}
+                </td>
+              </tr>
+              {% empty %}
+              <tr>
+                <td colspan="3">No sections found.</td>
+              </tr>
+              {% endfor %}
             </tbody>
           </table>
         </div>
@@ -1198,17 +1122,28 @@
       "July", "August", "September", "October", "November", "December"
     ];
 
+    const AUTO_DISMISS_MS = 4000;
+
+    const autoDismissAlert = (alert) => {
+      if (!alert) return;
+      setTimeout(() => {
+        if (alert.isConnected) {
+          alert.remove();
+        }
+      }, AUTO_DISMISS_MS);
+    };
+
+    if (messagePanel) {
+      messagePanel.querySelectorAll('.alert').forEach(autoDismissAlert);
+    }
+
     const showAlert = (text, type) => {
       if (!messagePanel) return;
       const alert = document.createElement('div');
       alert.className = `alert ${type || ''}`;
       alert.innerHTML = `<span>${text}</span><button class="close-alert" type="button" aria-label="Close alert">✕</button>`;
       messagePanel.appendChild(alert);
-      setTimeout(() => {
-        if (alert.isConnected) {
-          alert.remove();
-        }
-      }, 3000);
+      autoDismissAlert(alert);
     };
 
     const showModalAlert = (text, type) => {
@@ -1220,11 +1155,7 @@
       alert.style.margin = '10px 0';
       alert.innerHTML = `<span>${text}</span><button class="close-alert" type="button" aria-label="Close alert">✕</button>`;
       modalMessagePanel.appendChild(alert);
-      setTimeout(() => {
-        if (alert.isConnected) {
-          alert.remove();
-        }
-      }, 3000);
+      autoDismissAlert(alert);
     };
 
     const showAttendanceAlert = (text, type) => {
@@ -1234,11 +1165,7 @@
       alert.className = `alert ${type || ''}`;
       alert.innerHTML = `<span>${text}</span><button class="close-alert" type="button" aria-label="Close alert">✕</button>`;
       attendanceAlerts.appendChild(alert);
-      setTimeout(() => {
-        if (alert.isConnected) {
-          alert.remove();
-        }
-      }, 3000);
+      autoDismissAlert(alert);
     };
 
     const showLateStatusAlert = (text, type) => {
@@ -1248,11 +1175,7 @@
       alert.className = `alert ${type || ''}`;
       alert.innerHTML = `<span>${text}</span><button class="close-alert" type="button" aria-label="Close alert">✕</button>`;
       lateStatusAlerts.appendChild(alert);
-      setTimeout(() => {
-        if (alert.isConnected) {
-          alert.remove();
-        }
-      }, 3000);
+      autoDismissAlert(alert);
     };
 
     const escapeHtml = (value) => String(value || "")
@@ -1574,10 +1497,12 @@
       }
 
       modal.classList.add('active');
+      document.body.classList.add('no-scroll');
     };
 
     const hideModal = () => {
       modal.classList.remove('active');
+      document.body.classList.remove('no-scroll');
     };
 
     if (closeModalBtn) closeModalBtn.addEventListener('click', hideModal);
@@ -1656,6 +1581,7 @@
     };
 
     if (modalSearchBtn) modalSearchBtn.addEventListener('click', performModalSearch);
+
     if (modalSearchInput) {
       // Trigger search automatically as user types
       modalSearchInput.addEventListener('input', performModalSearch);
@@ -1971,6 +1897,32 @@
     const lateStatusConfirm = document.getElementById('late_status_confirm');
     const lateStatusCancel = document.getElementById('late_status_cancel');
 
+    const assignmentSchoolYear = document.getElementById('assignment_school_year');
+    const assignmentSection = document.getElementById('assignment_section');
+
+    if (assignmentSchoolYear && assignmentSection) {
+      const sectionOptions = Array.from(assignmentSection.querySelectorAll('option[data-school-year]'));
+      const uniqueYears = Array.from(new Set(sectionOptions.map((opt) => opt.dataset.schoolYear))).sort().reverse();
+      assignmentSchoolYear.innerHTML = '<option value="">Select School Year</option>';
+      uniqueYears.forEach((year) => {
+        const option = document.createElement('option');
+        option.value = year;
+        option.textContent = year;
+        assignmentSchoolYear.appendChild(option);
+      });
+
+      const filterSections = (year) => {
+        sectionOptions.forEach((opt) => {
+          opt.hidden = year && opt.dataset.schoolYear !== year;
+        });
+        assignmentSection.value = '';
+      };
+
+      assignmentSchoolYear.addEventListener('change', () => {
+        filterSections(assignmentSchoolYear.value);
+      });
+    }
+
     const submissionSchedules = [];
 
     const setScheduleActionLoading = (isLoading, text) => {
@@ -2192,6 +2144,12 @@
           const weekLabel = `${ordinal(week.week_no)} week`;
           const dueDate = week.due_date ? new Date(week.due_date) : null;
           const formattedDate = dueDate ? `${monthNames[dueDate.getMonth()]} ${dueDate.getDate()}, ${dueDate.getFullYear()}` : 'No date';
+          
+          const submittedDate = week.submitted_at ? new Date(week.submitted_at) : null;
+          const formattedSubmitted = submittedDate ? submittedDate.toLocaleString('en-US', {
+            month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit'
+          }) : '';
+
           const statusTextMap = {
             late: 'Late',
             on_time: 'On-time',
@@ -2200,15 +2158,25 @@
           const statusText = statusTextMap[week.status] || '';
           const statusClass = week.status && week.status.startsWith('late') ? 'late' : 'on-time';
           const noteText = (week.status_note || '').trim();
+          
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          const isFuture = dueDate && dueDate > today;
+          const disabledAttr = isFuture ? 'disabled' : '';
+          const titleAttr = isFuture ? 'title="Cannot log before due date"' : '';
+
           const row = document.createElement('div');
           row.className = 'week-row';
           row.innerHTML = `
             <div class="week-label">${weekLabel}</div>
-            <div class="week-date">${formattedDate}</div>
+            <div class="week-date">
+              <div>${formattedDate}</div>
+              ${formattedSubmitted ? `<div style="font-size: 11px; color: #0f6b2f; margin-top: 2px; font-weight: 500;">Logged: ${formattedSubmitted}</div>` : ''}
+            </div>
             <div class="week-status">
               ${statusText ? `<span class="status-pill ${statusClass}">${statusText}</span>` : ''}
               ${noteText ? `<span class="calendar-note" style="margin-left:8px;">${escapeHtml(noteText)}</span>` : ''}
-              <input type="checkbox" data-attendance-id="${week.id}" data-due-date="${week.due_date || ''}" ${week.submitted_at ? 'checked' : ''} />
+              <input type="checkbox" data-attendance-id="${week.id}" data-due-date="${week.due_date || ''}" ${week.submitted_at ? 'checked' : ''} ${disabledAttr} ${titleAttr} />
             </div>
           `;
           attendanceWeeksModal.appendChild(row);

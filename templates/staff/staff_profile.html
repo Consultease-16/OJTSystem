@@ -8,6 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@400;600;700&family=Work+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="{% static 'css/staff_header.css' %}?v=2" />
   <style>
     :root {
       --ink: #0a0a0c;
@@ -35,193 +36,6 @@
     }
 
     .shell { min-height: 100vh; }
-
-    .top-header {
-      position: sticky;
-      top: 0;
-      z-index: 5;
-      background: linear-gradient(160deg, rgba(15, 43, 82, 0.98), rgba(10, 10, 12, 0.98));
-      color: #f4f6f9;
-      padding: 16px 28px;
-      box-shadow: 0 18px 36px rgba(8, 10, 18, 0.25);
-    }
-
-    .top-inner {
-      max-width: 1200px;
-      margin: 0 auto;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 18px;
-      min-height: 96px;
-    }
-
-    .left-cluster {
-      display: inline-flex;
-      align-items: center;
-      gap: 14px;
-    }
-
-    .nav-btn {
-      width: 46px;
-      height: 46px;
-      border-radius: 16px;
-      border: 1px solid rgba(217, 182, 90, 0.6);
-      background: rgba(15, 43, 82, 0.45);
-      color: #f4f6f9;
-      display: grid;
-      place-items: center;
-      cursor: pointer;
-      transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
-    }
-
-    .nav-btn:hover {
-      border-color: rgba(217, 182, 90, 0.9);
-      background: rgba(15, 43, 82, 0.6);
-    }
-
-    .nav-btn:active { transform: translateY(1px); }
-
-    .nav-btn span,
-    .nav-btn span::before,
-    .nav-btn span::after {
-      content: "";
-      display: block;
-      width: 18px;
-      height: 2px;
-      background: currentColor;
-      border-radius: 999px;
-      transition: transform 0.2s ease;
-    }
-
-    .nav-btn span::before { transform: translateY(-6px); }
-    .nav-btn span::after { transform: translateY(4px); }
-
-    .sidebar {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 260px;
-      height: 100%;
-      background: #ffffff;
-      box-shadow: 8px 0 22px rgba(8, 9, 12, 0.18);
-      padding: 20px;
-      z-index: 100;
-      transform: translateX(-100%);
-      transition: transform 0.3s ease-in-out;
-    }
-
-    .sidebar-open .sidebar { transform: translateX(0); }
-
-    .sidebar-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 12px;
-    }
-
-    .sidebar-header h3 {
-      margin: 0;
-      font-size: 16px;
-      color: var(--accent);
-    }
-
-    .close-btn {
-      border: none;
-      background: transparent;
-      font-size: 20px;
-      cursor: pointer;
-      color: var(--muted);
-    }
-
-    .sidebar-nav {
-      list-style: none;
-      padding: 0;
-      margin: 0;
-      display: grid;
-      gap: 8px;
-    }
-
-    .sidebar-nav a {
-      display: block;
-      text-decoration: none;
-      color: var(--accent);
-      font-weight: 600;
-      padding: 10px 12px;
-      border-radius: 10px;
-      background: #f6f7fb;
-    }
-
-    .sidebar-nav a:hover { background: #eef1f6; }
-
-    .sidebar-backdrop {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(10, 10, 12, 0.5);
-      z-index: 99;
-      opacity: 0;
-      visibility: hidden;
-      transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
-    }
-
-    .sidebar-open .sidebar-backdrop {
-      opacity: 1;
-      visibility: visible;
-    }
-
-    .brand-logo-and-title {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-
-    .brand-logo {
-      width: 46px;
-      height: 46px;
-      border-radius: 14px;
-      overflow: hidden;
-      border: 2px solid rgba(217, 182, 90, 0.85);
-      box-shadow: 0 0 0 4px rgba(217, 182, 90, 0.18);
-    }
-
-    .brand-logo img { width: 100%; height: 100%; object-fit: cover; }
-
-    .site-title-left {
-      display: grid;
-      gap: 4px;
-      text-align: left;
-    }
-
-    .site-title-left h1 {
-      margin: 0;
-      font-family: "Fraunces", serif;
-      font-size: clamp(22px, 2.6vw, 30px);
-    }
-
-    .site-title-left p {
-      margin: 0;
-      font-size: 13px;
-      color: rgba(244, 246, 249, 0.75);
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-    }
-
-    .header-meta {
-      display: grid;
-      gap: 6px;
-      text-align: right;
-      font-size: 12px;
-      color: rgba(244, 246, 249, 0.7);
-      align-items: center;
-    }
-
-    .header-meta strong {
-      font-size: 14px;
-      color: #f4f6f9;
-    }
 
     .content {
       max-width: 900px;
@@ -590,25 +404,17 @@
     }
 
     @media (max-width: 720px) {
-      .top-inner { flex-wrap: wrap; justify-content: space-between; gap: 12px; }
-      .header-meta { display: none; }
       .profile-grid { grid-template-columns: 1fr; }
       .left-col { width: 100%; max-width: 240px; }
       .profile-details { width: 100%; }
     }
 
     @media (max-width: 600px) {
-      .top-header { padding: 12px 16px; }
-      .top-inner { flex-direction: column; align-items: flex-start; min-height: auto; }
-      .left-cluster { width: 100%; flex-wrap: wrap; }
-      .site-title-left p { display: none; }
-      .header-meta { width: 100%; text-align: left; }
       .content { padding: 16px; }
       .panel { padding: 16px; }
       .panel-header { flex-direction: column; align-items: flex-start; gap: 12px; }
       .modal-actions { flex-direction: column; }
       .modal-actions .btn { width: 100%; }
-      .sidebar { width: min(80vw, 300px); }
     }
   </style>
 </head>
@@ -691,6 +497,22 @@
     <div id="image_lightbox" class="image-lightbox" aria-hidden="true">
       <button id="image_lightbox_close" class="image-lightbox-close" type="button" aria-label="Close preview">×</button>
       <img id="image_lightbox_preview" src="" alt="Profile image preview" />
+    </div>
+
+    <div id="confirm_remove_modal" class="modal-backdrop">
+      <div class="modal" style="max-width: 400px;">
+        <div class="modal-header">
+          <h3>Remove Profile Picture?</h3>
+          <button id="close_confirm_btn" class="close-modal">&times;</button>
+        </div>
+        <div class="modal-form">
+          <p style="color: var(--muted); font-size: 14px; margin: 0;">Are you sure you want to remove your profile picture? This action cannot be undone.</p>
+          <div class="modal-actions">
+            <button type="button" class="cancel-btn" id="cancel_remove_btn">Cancel</button>
+            <button type="button" class="remove-image-button" id="confirm_remove_btn">Remove</button>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
   <script>
@@ -832,30 +654,55 @@
       }
     });
 
-      const removeBtn = document.getElementById('remove_profile_btn');
-      const removeForm = document.getElementById('remove_profile_form');
-      if (removeBtn && removeForm) {
-        removeBtn.addEventListener('click', () => {
-          const ok = window.confirm('Remove profile photo? This cannot be undone.');
-          if (ok) {
-            removeForm.submit();
-          }
+    const removeBtn = document.getElementById('remove_profile_btn');
+    const removeForm = document.getElementById('remove_profile_form');
+    const confirmModal = document.getElementById('confirm_remove_modal');
+    const closeConfirmBtn = document.getElementById('close_confirm_btn');
+    const cancelConfirmBtn = document.getElementById('cancel_remove_btn');
+    const confirmRemoveBtn = document.getElementById('confirm_remove_btn');
+
+    if (removeBtn && removeForm && confirmModal) {
+      removeBtn.addEventListener('click', () => {
+        confirmModal.classList.add('active');
+        // Close the edit modal if open, to avoid overlay issues (optional but good UX)
+        const editModal = document.getElementById('edit_modal');
+        if (editModal) editModal.classList.remove('active');
+      });
+
+      const closeConfirm = () => confirmModal.classList.remove('active');
+
+      if (closeConfirmBtn) closeConfirmBtn.addEventListener('click', closeConfirm);
+      if (cancelConfirmBtn) cancelConfirmBtn.addEventListener('click', closeConfirm);
+      
+      confirmModal.addEventListener('click', (e) => {
+        if (e.target === confirmModal) closeConfirm();
+      });
+
+      if (confirmRemoveBtn) {
+        confirmRemoveBtn.addEventListener('click', () => {
+          removeForm.submit();
         });
       }
+    }
 
-      document.addEventListener('keydown', (event) => {
-        if (event.key !== 'Escape') return;
-        const lightbox = document.getElementById('image_lightbox');
-        if (lightbox && lightbox.classList.contains('active')) {
-          lightbox.classList.remove('active');
-          lightbox.setAttribute('aria-hidden', 'true');
-          return;
-        }
-        const editModal = document.getElementById('edit_modal');
-        if (editModal && editModal.classList.contains('active')) {
-          editModal.classList.remove('active');
-        }
-      });
+    document.addEventListener('keydown', (event) => {
+      if (event.key !== 'Escape') return;
+      const lightbox = document.getElementById('image_lightbox');
+      if (lightbox && lightbox.classList.contains('active')) {
+        lightbox.classList.remove('active');
+        lightbox.setAttribute('aria-hidden', 'true');
+        return;
+      }
+      const editModal = document.getElementById('edit_modal');
+      if (editModal && editModal.classList.contains('active')) {
+        editModal.classList.remove('active');
+        return;
+      }
+      const confirmModal = document.getElementById('confirm_remove_modal');
+      if (confirmModal && confirmModal.classList.contains('active')) {
+        confirmModal.classList.remove('active');
+      }
+    });
   </script>
 </body>
 </html>
