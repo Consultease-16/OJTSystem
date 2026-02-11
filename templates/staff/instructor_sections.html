@@ -151,8 +151,10 @@
     /* Keep student number/name fixed and single-line in requirements */
     #requirements_table th:nth-child(1),
     #requirements_table td:nth-child(1) {
-      width: 90px;
+      width: 130px;
       white-space: nowrap;
+      text-align: left;
+      padding-left: 16px;
     }
 
     #requirements_table th:nth-child(2),
@@ -161,38 +163,46 @@
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+      text-align: left;
+      padding-left: 16px;
+    }
+
+    #requirements_table th:nth-child(1),
+    #requirements_table th:nth-child(2) {
+      overflow: visible;
+      text-overflow: clip;
     }
 
     /* Keep Weekly Journal columns aligned and readable */
     #weekly_table {
       table-layout: fixed;
-      min-width: 980px;
+      min-width: 100%; /* Auto expand */
     }
 
     #weekly_table th,
     #weekly_table td {
       text-align: center;
       white-space: nowrap;
+      padding: 12px 8px;
     }
 
+    /* First two columns: Student info */
     #weekly_table th:nth-child(1),
-    #weekly_table td:nth-child(1) { width: 14%; }
-    #weekly_table th:nth-child(2),
-    #weekly_table td:nth-child(2) { width: 18%; }
-    #weekly_table th:nth-child(3),
-    #weekly_table td:nth-child(3) { width: 22%; }
-    #weekly_table th:nth-child(4),
-    #weekly_table td:nth-child(4) { width: 16%; }
-    #weekly_table th:nth-child(5),
-    #weekly_table td:nth-child(5) { width: 30%; }
-
-    #weekly_table td:nth-child(5) {
+    #weekly_table td:nth-child(1) { 
+      width: 130px; 
       text-align: left;
-      white-space: normal;
-      word-break: break-word;
+      padding-left: 16px;
+    }
+    #weekly_table th:nth-child(2),
+    #weekly_table td:nth-child(2) { 
+      width: 220px; 
+      text-align: left;
+      padding-left: 16px;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
-    /* Keep DTR month columns aligned */
+    /* DTR month columns aligned */
     #dtr_table {
       table-layout: fixed;
       min-width: 1080px;
@@ -224,6 +234,11 @@
 
     tbody tr:hover {
       background: #f8fafc;
+    }
+    
+    tbody tr.highlight-row td {
+      background: #e0e7ff; /* Light indigo highlight */
+      color: var(--accent);
     }
 
     tbody tr:last-child td {
@@ -586,7 +601,7 @@
             <td>${s.program || ""}</td>
           </tr>
         `).join("");
-        setTableHtml("students_table", ["Student Number", "Student", "Program"], studentRows);
+        setTableHtml("students_table", ["Student No.", "Student", "Program"], studentRows);
 
         const reqRows = (data.requirements || []).map((r) => `
           <tr>
@@ -613,7 +628,7 @@
         setTableHtml(
           "requirements_table",
           [
-            "Student Number",
+            "Student No.",
             "Student",
             "Form&nbsp;1<br>Practicum<br>Application",
             "Form&nbsp;2<br>Letter of<br>Intent",
@@ -635,33 +650,62 @@
           reqRows
         );
 
-        const weeklyRows = (data.weekly_journal || []).map((w) => `
-          <tr>
-            <td>Week ${w.week_no || ""}</td>
-            <td>${w.due_date || ""}</td>
-            <td>${w.submitted_at || ""}</td>
-            <td>${w.status || ""}</td>
-            <td>${w.status_note || ""}</td>
-          </tr>
-        `).join("");
-        setTableHtml("weekly_table", ["Week", "Due Date", "Submitted At", "Status", "Notes"], weeklyRows);
+        // Handle Matrix Data for Weekly Journal
+        const wData = data.weekly_journal || { columns: [], rows: [] };
+        // Fallback if data is in old array format
+        const wMatrix = Array.isArray(wData) ? { columns: [], rows: [] } : wData;
+
+        const wHeaders = ["Student No.", "Student", ...wMatrix.columns];
+        
+        const wRows = (wMatrix.rows || []).map((row) => {
+          const cells = (row.cells || []).map((c) => {
+             if (!c) return '<span>-</span>';
+             // Status rendering
+             let icon = '<span style="color:#cbd5e1; font-size:18px">&bull;</span>'; // Pending/None
+             if (c.status === 'on_time') {
+                icon = '<span class="mark-ok" title="On Time">&#10003;</span>';
+             } else if (c.status === 'late') {
+                icon = '<span class="mark-no" title="Late">&#10007;</span>';
+             } else if (c.status === 'late_excused') {
+                icon = '<span class="mark-ok" style="background:rgba(245, 158, 11, 0.12); color:#d97706" title="Excused">&#10003;</span>';
+             }
+             return icon;
+          }).join('</td><td>');
+          
+          return `
+            <tr>
+              <td>${row.student_no}</td>
+              <td>${row.name}</td>
+              <td>${cells}</td>
+            </tr>
+          `;
+        }).join("");
+        
+        setTableHtml("weekly_table", wHeaders, wRows);
+
+        // Adjust table width dynamically
+        const wTable = document.getElementById("weekly_table");
+        if (wTable) {
+           const minW = 350 + (wMatrix.columns.length * 90);
+           wTable.style.minWidth = minW + "px";
+        }
 
         const dtrRows = (data.dtr || []).map((d) => `
           <tr>
             <td>${d.student_no || ""}</td>
             <td>${d.name || ""}</td>
-            <td>${d.january_hours ?? 0}</td>
-            <td>${d.february_hours ?? 0}</td>
-            <td>${d.march_hours ?? 0}</td>
-            <td>${d.april_hours ?? 0}</td>
-            <td>${d.may_hours ?? 0}</td>
-            <td>${d.june_hours ?? 0}</td>
-            <td>${d.total_hours ?? 0}</td>
+            <td>${d.january_hours ?? 0}hrs</td>
+            <td>${d.february_hours ?? 0}hrs</td>
+            <td>${d.march_hours ?? 0}hrs</td>
+            <td>${d.april_hours ?? 0}hrs</td>
+            <td>${d.may_hours ?? 0}hrs</td>
+            <td>${d.june_hours ?? 0}hrs</td>
+            <td>${d.total_hours ?? 0}hrs</td>
           </tr>
         `).join("");
         setTableHtml(
           "dtr_table",
-          ["Student Number", "Student", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Total"],
+          ["Student No.", "Student", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Total"],
           dtrRows
         );
 
@@ -752,6 +796,27 @@
           const panel = document.querySelector(`.tab-panel[data-panel="${tab}"]`);
           if (panel) panel.classList.add('active');
         });
+      });
+
+      // Row Highlighting Logic
+      function handleRowClick(e) {
+        const row = e.target.closest('tr');
+        if (!row || row.parentElement.tagName !== 'TBODY') return;
+
+        // Toggle highlight on the clicked row
+        if (row.classList.contains('highlight-row')) {
+           row.classList.remove('highlight-row');
+        } else {
+           // Optional: clear other highlights in the same table if exclusive selection is desired
+           const table = row.closest('table');
+           table.querySelectorAll('tr.highlight-row').forEach(r => r.classList.remove('highlight-row'));
+           row.classList.add('highlight-row');
+        }
+      }
+
+      ['requirements_table', 'weekly_table', 'dtr_table'].forEach(id => {
+        const t = document.getElementById(id);
+        if (t) t.addEventListener('click', handleRowClick);
       });
     });
   </script>

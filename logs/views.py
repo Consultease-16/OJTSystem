@@ -1,5 +1,7 @@
 import secrets
 import datetime
+import csv
+import io
 from email.mime.image import MIMEImage
 from pathlib import Path
 
@@ -8,7 +10,7 @@ from django.contrib.auth.hashers import check_password, make_password
 from django.core.mail import EmailMultiAlternatives
 from django.template.loader import render_to_string
 from django.shortcuts import redirect, render
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.db import IntegrityError
 import os
 import uuid
@@ -530,10 +532,14 @@ def staff_home(request):
 
 def _build_instructor_section_detail(cursor, section, school_year):
     school_year_start = None
+    school_year_end = None
     try:
-        school_year_start = int(str(school_year).split("-")[0].strip())
+        year_parts = [p.strip() for p in str(school_year).split("-")]
+        school_year_start = int(year_parts[0]) if year_parts and year_parts[0] else None
+        school_year_end = int(year_parts[1]) if len(year_parts) > 1 and year_parts[1] else None
     except (ValueError, TypeError):
         school_year_start = None
+        school_year_end = None
 
     cursor.execute(
         """
@@ -603,6 +609,7 @@ def _build_instructor_section_detail(cursor, section, school_year):
 
         students.append(
             {
+                "student_id": str(student_row[0]),
                 "student_no": student_row[1],
                 "name": full_name,
                 "program": student_row[6],
@@ -644,35 +651,93 @@ def _build_instructor_section_detail(cursor, section, school_year):
             }
         )
 
-    weekly_journal_rows = []
-    if school_year_start is not None:
+    weekly_journal_matrix = {"columns": [], "rows": []}
+    
+    # Determine the single target year (preferring the 2nd year if "Start - End" format)
+    target_year = school_year_end if school_year_end is not None else school_year_start
+    
+    if target_year is not None:
+        query_params = [section, target_year]
+
         cursor.execute(
-            """
-            select week_no, due_date, submitted_at, status, status_note
-            from weekly_journal
-            where section = %s and year = %s
-            order by week_no asc
+            f"""
+            select
+                wj.student_id,
+                wj.month,
+                wj.week_no,
+                wj.due_date,
+                wj.submitted_at,
+                wj.status,
+                wj.status_note
+            from weekly_journal wj
+            where wj.section = %s and wj.year = %s
+            order by wj.due_date asc, wj.week_no asc
             """,
-            [section, school_year_start],
+            query_params,
         )
-        weekly_rows = cursor.fetchall()
-        weekly_journal_rows = [
-            {
-                "week_no": r[0],
-                "due_date": r[1].isoformat() if r[1] else "",
-                "submitted_at": r[2].isoformat() if r[2] else "",
-                "status": r[3] or ("passed" if r[2] else "pending"),
-                "status_note": r[4] or "",
+        
+        raw_entries = cursor.fetchall()
+
+        # 1. Identify all unique columns (Weeks)
+        # Key: "YYYY-MM-WeekN", Label: "Month Week N\nDue: Date"
+        # We use a dict to preserve insertion order (Python 3.7+)
+        unique_weeks = {}
+        for r in raw_entries:
+            # r[1]=month, r[2]=week_no, r[3]=due_date
+            # Create a unique key for the column
+            col_key = f"{r[3].isoformat()}_{r[2]}"
+            if col_key not in unique_weeks:
+                due_str = r[3].strftime("%b %d")
+                # Map month number to short name if needed, but due date is clearer
+                label = f"Week {r[2]}<br><span style='font-size:10px; font-weight:400'>{due_str}</span>"
+                unique_weeks[col_key] = {
+                    "key": col_key,
+                    "label": label,
+                    "due_date": r[3]
+                }
+        
+        matrix_columns = list(unique_weeks.values())
+        weekly_journal_matrix["columns"] = [c["label"] for c in matrix_columns]
+
+        # 2. Map entries by student
+        student_entries = {} # student_id -> { col_key -> entry_data }
+        for r in raw_entries:
+            s_id = str(r[0])
+            col_key = f"{r[3].isoformat()}_{r[2]}"
+            if s_id not in student_entries:
+                student_entries[s_id] = {}
+            
+            student_entries[s_id][col_key] = {
+                "submitted": bool(r[4]),
+                "status": r[5] or ("passed" if r[4] else "pending"),
+                "note": r[6]
             }
-            for r in weekly_rows
-        ]
+
+        # 3. Build rows matching the 'students' list order
+        for s in students:
+            s_id = s["student_id"]
+            row_cells = []
+            s_data = student_entries.get(s_id, {})
+            
+            for col in matrix_columns:
+                cell_data = s_data.get(col["key"])
+                if cell_data:
+                    row_cells.append(cell_data)
+                else:
+                    row_cells.append(None) # No entry for this week (shouldn't happen if sync works)
+            
+            weekly_journal_matrix["rows"].append({
+                "student_no": s["student_no"],
+                "name": s["name"],
+                "cells": row_cells
+            })
 
     return {
         "section": section,
         "school_year": school_year,
         "students": students,
         "requirements": requirement_rows,
-        "weekly_journal": weekly_journal_rows,
+        "weekly_journal": weekly_journal_matrix,
         "dtr": dtr_rows,
     }
 
@@ -681,12 +746,13 @@ def _build_instructor_section_detail(cursor, section, school_year):
 def instructor_sections(request):
     account_id = request.session.get("account_id")
     account_type = request.session.get("account_type")
-    if not account_id or account_type != "instructor":
-        request.session["flash_message"] = "Please log in as a practicum instructor to continue."
+    if not account_id or account_type not in {"instructor", "coordinator"}:
+        request.session["flash_message"] = "Please log in to continue."
         request.session["flash_message_type"] = "error"
         return redirect("front_page")
 
-    account = PracticumInstructor.objects.filter(id=account_id).first()
+    model = PracticumInstructor if account_type == "instructor" else PracticumCoordinator
+    account = model.objects.filter(id=account_id).first()
     if not account:
         request.session.pop("account_id", None)
         request.session.pop("account_type", None)
@@ -694,16 +760,28 @@ def instructor_sections(request):
 
     _ensure_section_instructor_tables()
     with connection.cursor() as cursor:
-        cursor.execute(
-            """
-            select sl.id, sl.section, sl.school_year
-            from section_instructors si
-            join section_list sl on sl.id = si.section_id
-            where si.instructor_id = %s
-            order by sl.school_year desc, sl.section asc
-            """,
-            [account_id],
-        )
+        if account_type == "coordinator":
+            cursor.execute(
+                """
+                select sl.id, sl.section, sl.school_year
+                from section_instructors si
+                join section_list sl on sl.id = si.section_id
+                where si.coordinator_id = %s
+                order by sl.school_year desc, sl.section asc
+                """,
+                [account_id],
+            )
+        else:
+            cursor.execute(
+                """
+                select sl.id, sl.section, sl.school_year
+                from section_instructors si
+                join section_list sl on sl.id = si.section_id
+                where si.instructor_id = %s
+                order by sl.school_year desc, sl.section asc
+                """,
+                [account_id],
+            )
         assigned_sections = [
             {"section_id": str(row[0]), "section": row[1], "school_year": row[2]}
             for row in cursor.fetchall()
@@ -728,10 +806,11 @@ def instructor_sections(request):
 def instructor_section_details(request, section_id):
     account_id = request.session.get("account_id")
     account_type = request.session.get("account_type")
-    if not account_id or account_type != "instructor":
+    if not account_id or account_type not in {"instructor", "coordinator"}:
         return JsonResponse({"ok": False, "error": "Unauthorized"}, status=401)
 
-    account = PracticumInstructor.objects.filter(id=account_id).first()
+    model = PracticumInstructor if account_type == "instructor" else PracticumCoordinator
+    account = model.objects.filter(id=account_id).first()
     if not account:
         request.session.pop("account_id", None)
         request.session.pop("account_type", None)
@@ -739,15 +818,26 @@ def instructor_section_details(request, section_id):
 
     _ensure_section_instructor_tables()
     with connection.cursor() as cursor:
-        cursor.execute(
-            """
-            select sl.section, sl.school_year
-            from section_instructors si
-            join section_list sl on sl.id = si.section_id
-            where si.instructor_id = %s and sl.id = %s
-            """,
-            [account_id, str(section_id)],
-        )
+        if account_type == "coordinator":
+            cursor.execute(
+                """
+                select sl.section, sl.school_year
+                from section_instructors si
+                join section_list sl on sl.id = si.section_id
+                where si.coordinator_id = %s and sl.id = %s
+                """,
+                [account_id, str(section_id)],
+            )
+        else:
+            cursor.execute(
+                """
+                select sl.section, sl.school_year
+                from section_instructors si
+                join section_list sl on sl.id = si.section_id
+                where si.instructor_id = %s and sl.id = %s
+                """,
+                [account_id, str(section_id)],
+            )
         row = cursor.fetchone()
         if not row:
             return JsonResponse({"ok": False, "error": "Section not found"}, status=404)
@@ -1750,6 +1840,135 @@ def manage_accounts(request):
 
     if request.method == "POST":
         action = request.POST.get("action")
+        if action == "import_student_csv":
+            upload = request.FILES.get("student_csv")
+            if not upload:
+                request.session["flash_message"] = "Please choose a CSV file first."
+                request.session["flash_message_type"] = "error"
+                return redirect("manage_accounts")
+
+            if not upload.name.lower().endswith(".csv"):
+                request.session["flash_message"] = "Invalid file type. Upload a .csv file."
+                request.session["flash_message_type"] = "error"
+                return redirect("manage_accounts")
+
+            try:
+                content = upload.read().decode("utf-8-sig")
+            except UnicodeDecodeError:
+                request.session["flash_message"] = "CSV must be UTF-8 encoded."
+                request.session["flash_message_type"] = "error"
+                return redirect("manage_accounts")
+
+            reader = csv.DictReader(io.StringIO(content))
+            if not reader.fieldnames:
+                request.session["flash_message"] = "CSV is empty or missing headers."
+                request.session["flash_message_type"] = "error"
+                return redirect("manage_accounts")
+
+            # Normalize incoming headers so template files can use either "email" or "cca_email".
+            headers = {h.strip().lower(): h for h in reader.fieldnames if h}
+            required = ["student_no", "last_name", "first_name", "program", "section"]
+            missing = [k for k in required if k not in headers]
+            if "cca_email" not in headers and "email" not in headers:
+                missing.append("cca_email")
+            if missing:
+                request.session["flash_message"] = (
+                    "CSV missing required columns: " + ", ".join(missing)
+                )
+                request.session["flash_message_type"] = "error"
+                return redirect("manage_accounts")
+
+            created_count = 0
+            updated_count = 0
+            skipped_count = 0
+            errors = []
+
+            for idx, row in enumerate(reader, start=2):
+                student_no = (row.get(headers.get("student_no", ""), "") or "").strip()
+                cca_email = (
+                    (row.get(headers.get("cca_email", ""), "") or "")
+                    or (row.get(headers.get("email", ""), "") or "")
+                ).strip().lower()
+                last_name = (row.get(headers.get("last_name", ""), "") or "").strip()
+                first_name = (row.get(headers.get("first_name", ""), "") or "").strip()
+                second_name = (row.get(headers.get("second_name", ""), "") or "").strip() or None
+                middle_initial = (row.get(headers.get("middle_initial", ""), "") or "").strip() or None
+                program = (row.get(headers.get("program", ""), "") or "").strip()
+                section = (row.get(headers.get("section", ""), "") or "").strip()
+                school_year = (row.get(headers.get("school_year", ""), "") or "").strip() or None
+
+                if not (student_no or cca_email or first_name or last_name or program or section):
+                    skipped_count += 1
+                    continue
+
+                if not student_no or not cca_email or not first_name or not last_name or not program or not section:
+                    errors.append({"row": idx, "reason": "Missing required value(s)."})
+                    continue
+
+                try:
+                    existing = Student.objects.filter(student_no=student_no).first()
+                    if not existing:
+                        existing = Student.objects.filter(cca_email=cca_email).first()
+
+                    if existing:
+                        existing.student_no = student_no
+                        existing.cca_email = cca_email
+                        existing.last_name = last_name
+                        existing.first_name = first_name
+                        existing.second_name = second_name
+                        existing.middle_initial = middle_initial
+                        existing.program = program
+                        existing.section = section
+                        existing.school_year = school_year
+                        existing.save(update_fields=[
+                            "student_no",
+                            "cca_email",
+                            "last_name",
+                            "first_name",
+                            "second_name",
+                            "middle_initial",
+                            "program",
+                            "section",
+                            "school_year",
+                        ])
+                        updated_count += 1
+                    else:
+                        Student.objects.create(
+                            student_no=student_no,
+                            cca_email=cca_email,
+                            last_name=last_name,
+                            first_name=first_name,
+                            second_name=second_name,
+                            middle_initial=middle_initial,
+                            school_year=school_year,
+                            program=program,
+                            section=section,
+                            password="",
+                            activation_code="",
+                            recovery_code=None,
+                            active_status=False,
+                            is_password_temp=True,
+                        )
+                        created_count += 1
+                except IntegrityError:
+                    errors.append({"row": idx, "reason": "Duplicate student number or email conflict."})
+                except Exception as exc:
+                    errors.append({"row": idx, "reason": str(exc)})
+
+            request.session["import_student_summary"] = {
+                "created": created_count,
+                "updated": updated_count,
+                "skipped": skipped_count,
+                "errors": errors[:50],
+                "error_count": len(errors),
+            }
+            request.session["flash_message"] = (
+                f"Student CSV import done. Created: {created_count}, "
+                f"Updated: {updated_count}, Skipped: {skipped_count}, Errors: {len(errors)}."
+            )
+            request.session["flash_message_type"] = "success" if len(errors) == 0 else "error"
+            return redirect("manage_accounts")
+
         if action == "add_student":
             try:
                 student = Student.objects.create(
@@ -1792,6 +2011,7 @@ def manage_accounts(request):
                             "second_name": student.second_name,
                             "section": student.section,
                             "program": student.program,
+                            "school_year": student.school_year,
                             "cca_email": student.cca_email,
                             "active_status": student.active_status,
                         },
@@ -1874,6 +2094,7 @@ def manage_accounts(request):
                             "second_name": student.second_name,
                             "section": student.section,
                             "program": student.program,
+                            "school_year": student.school_year,
                             "cca_email": student.cca_email,
                             "active_status": student.active_status,
                         },
@@ -1920,6 +2141,7 @@ def manage_accounts(request):
     instructors = PracticumInstructor.objects.all().order_by("last_name", "first_name")
     edit_type = request.GET.get("edit_type")
     edit_id = request.GET.get("edit_id")
+    import_student_summary = request.session.pop("import_student_summary", None)
     edit_record = None
     if edit_type == "student" and edit_id:
         edit_record = Student.objects.filter(id=edit_id).first()
@@ -1938,11 +2160,44 @@ def manage_accounts(request):
             "instructors": instructors,
             "edit_type": edit_type,
             "edit_record": edit_record,
+            "import_student_summary": import_student_summary,
         },
     )
     response["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
     response["Pragma"] = "no-cache"
     response["Expires"] = "0"
+    return response
+
+
+def download_students_csv_template(request):
+    rows = [
+        [
+            "student_no",
+            "cca_email",
+            "last_name",
+            "first_name",
+            "second_name",
+            "middle_initial",
+            "program",
+            "section",
+            "school_year",
+        ],
+        [
+            "22-2246",
+            "student@cca.edu.ph",
+            "Acopio",
+            "Ross Jhem",
+            "",
+            "P",
+            "Bachelor of Science in Computer Science",
+            "CS-404",
+            "2025 - 2026",
+        ],
+    ]
+    response = HttpResponse(content_type="text/csv")
+    response["Content-Disposition"] = 'attachment; filename="students_template.csv"'
+    writer = csv.writer(response)
+    writer.writerows(rows)
     return response
 
 

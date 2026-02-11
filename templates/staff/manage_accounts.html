@@ -392,10 +392,54 @@
           <button class="close-alert" type="button" aria-label="Close alert">✕</button>
         </div>
         {% endif %}
+        {% if import_student_summary %}
+        <div class="alert {% if import_student_summary.error_count %}error{% else %}success{% endif %}" style="display:block;">
+          <span>
+            Import result - Created: {{ import_student_summary.created }},
+            Updated: {{ import_student_summary.updated }},
+            Skipped: {{ import_student_summary.skipped }},
+            Errors: {{ import_student_summary.error_count }}
+          </span>
+          <button class="close-alert" type="button" aria-label="Close alert">✕</button>
+        </div>
+        {% if import_student_summary.errors %}
+        <div class="table-wrap" style="margin-top:12px;">
+          <table>
+            <thead>
+              <tr>
+                <th>Row</th>
+                <th>Reason</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for err in import_student_summary.errors %}
+              <tr>
+                <td>{{ err.row }}</td>
+                <td>{{ err.reason }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% endif %}
+        {% endif %}
       </section>
 
       <section class="panel section-panel" id="add_account_panel">
         <h2>Add Account</h2>
+        <section class="panel" style="margin-bottom:16px;">
+          <h2 style="margin-bottom:12px;">Import Students (CSV)</h2>
+          <form method="post" action="{% url 'manage_accounts' %}" enctype="multipart/form-data" style="display:flex;gap:12px;align-items:end;flex-wrap:wrap;">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="import_student_csv" />
+            <div class="form-group" style="min-width:260px;">
+              <label for="student_csv">Student CSV File</label>
+              <input id="student_csv" name="student_csv" type="file" accept=".csv,text/csv" required />
+            </div>
+            <button class="btn" type="submit">Import CSV</button>
+            <a class="btn secondary" href="{% url 'download_students_csv_template' %}">Download Template</a>
+          </form>
+        </section>
         <div class="form-grid" style="margin-bottom: 24px; max-width: 400px;">
           <div class="form-group">
             <label>Select Account Type</label>
@@ -670,7 +714,7 @@
         // If we are before July, the current school year started last year (e.g., Feb 2026 is SY 2025-2026)
         const effectiveCurrentYear = now.getMonth() < 6 ? currentYear - 1 : currentYear;
         
-        const BASE_YEAR = 2025; // The list will always start here
+        const BASE_YEAR = 2024; // The list will always start here // The list will always start here
         const FUTURE_BUFFER = 2; // Always show this many years ahead of the current date
         
         const years = [];
@@ -889,7 +933,7 @@
         const currentYear = now.getFullYear();
         // If we are before July, the current school year started last year
         const effectiveCurrentYear = now.getMonth() < 6 ? currentYear - 1 : currentYear;
-        const BASE_YEAR = 2025;
+        const BASE_YEAR = 2024; // The list will always start here
         const FUTURE_BUFFER = 2;
         const endYear = Math.max(BASE_YEAR, effectiveCurrentYear + FUTURE_BUFFER);
         
@@ -1050,6 +1094,35 @@
       const closeEditModalBtn = document.getElementById('close_edit_modal');
       const saveEditBtn = document.getElementById('save_edit_btn');
       const editForm = document.getElementById('edit_form');
+      const editSchoolYear = document.getElementById('edit_school_year');
+
+      if (editSchoolYear) {
+        const currentValue = (editSchoolYear.value || '').trim();
+        const now = new Date();
+        const currentYear = now.getFullYear();
+        const effectiveCurrentYear = now.getMonth() < 6 ? currentYear - 1 : currentYear;
+        const BASE_YEAR = 2024;
+        const FUTURE_BUFFER = 2;
+        const endYear = Math.max(BASE_YEAR, effectiveCurrentYear + FUTURE_BUFFER);
+        const years = [];
+        for (let y = BASE_YEAR; y <= endYear; y++) {
+          years.push(`${y} - ${y + 1}`);
+        }
+        if (currentValue && !years.includes(currentValue)) {
+          years.unshift(currentValue);
+        }
+
+        const placeholder = editSchoolYear.options[0] || new Option('Select School Year', '');
+        editSchoolYear.innerHTML = '';
+        editSchoolYear.appendChild(placeholder);
+        years.forEach((year) => {
+          const option = document.createElement('option');
+          option.value = year;
+          option.textContent = year;
+          if (year === currentValue) option.selected = true;
+          editSchoolYear.appendChild(option);
+        });
+      }
 
       if (saveEditBtn && editForm) {
         saveEditBtn.addEventListener('click', () => {

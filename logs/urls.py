@@ -19,6 +19,11 @@ urlpatterns = [
     path('staff/weekly-journal/weeks/', views.weekly_journal_weeks, name='weekly_journal_weeks'),
     path('staff/weekly-journal/check/', views.update_weekly_journal_check, name='weekly_journal_check'),
     path('staff/manage-accounts/', views.manage_accounts, name='manage_accounts'),
+    path(
+        'staff/manage-accounts/students-template.csv',
+        views.download_students_csv_template,
+        name='download_students_csv_template',
+    ),
     path('staff/handled-sections/', views.instructor_sections, name='instructor_sections'),
     path(
         'staff/handled-sections/<uuid:section_id>/details/',
