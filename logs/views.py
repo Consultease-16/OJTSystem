@@ -2,6 +2,7 @@ import secrets
 import datetime
 import csv
 import io
+import logging
 from email.mime.image import MIMEImage
 from pathlib import Path
 
@@ -21,6 +22,8 @@ from django.utils import timezone
 from django.views.decorators.cache import never_cache
 
 from .models import PracticumCoordinator, PracticumInstructor, Student
+
+logger = logging.getLogger(__name__)
 
 def _attach_logo(message):
     logo_path = Path(settings.BASE_DIR) / "ICSLIS LOGO.png"
@@ -48,28 +51,42 @@ def front_page(request):
             return render(request, "auth/login.html", context)
 
         email = email.lower()
-        account = Student.objects.filter(cca_email=email).first()
-        account_type = "student"
-        if not account:
-            account = PracticumCoordinator.objects.filter(cca_email=email).first()
-            account_type = "coordinator"
-        if not account:
-            account = PracticumInstructor.objects.filter(cca_email=email).first()
-            account_type = "instructor"
-        if not account:
+        role_candidates = []
+        student = Student.objects.filter(cca_email=email).first()
+        if student:
+            role_candidates.append(("student", student))
+        coordinator = PracticumCoordinator.objects.filter(cca_email=email).first()
+        if coordinator:
+            role_candidates.append(("coordinator", coordinator))
+        instructor = PracticumInstructor.objects.filter(cca_email=email).first()
+        if instructor:
+            role_candidates.append(("instructor", instructor))
+
+        if not role_candidates:
             context["message"] = "Invalid login credentials."
             context["message_type"] = "error"
             return render(request, "auth/login.html", context)
 
-        if not account.active_status:
+        matching_candidates = [
+            (role, acct)
+            for role, acct in role_candidates
+            if acct.password and check_password(password, acct.password)
+        ]
+        if not matching_candidates:
+            context["message"] = "Invalid login credentials."
+            context["message_type"] = "error"
+            return render(request, "auth/login.html", context)
+
+        active_matches = [(role, acct) for role, acct in matching_candidates if acct.active_status]
+        if not active_matches:
             context["message"] = "Account is not activated yet."
             context["message_type"] = "error"
             return render(request, "auth/login.html", context)
 
-        if not check_password(password, account.password):
-            context["message"] = "Invalid login credentials."
-            context["message_type"] = "error"
-            return render(request, "auth/login.html", context)
+        # Prefer non-temporary-password account when multiple role rows share one email.
+        role_priority = {"coordinator": 0, "instructor": 1, "student": 2}
+        active_matches.sort(key=lambda item: (item[1].is_password_temp, role_priority.get(item[0], 99)))
+        account_type, account = active_matches[0]
 
         request.session["account_id"] = str(account.id)
         request.session["account_type"] = account_type
@@ -202,6 +219,25 @@ def forgot_password(request):
 
 def activate_account(request):
     context = {}
+
+    def _get_account_for_activation(target_email: str):
+        account = Student.objects.filter(cca_email=target_email).first()
+        if account:
+            return account
+        account = PracticumCoordinator.objects.filter(cca_email=target_email).first()
+        if account:
+            return account
+        return PracticumInstructor.objects.filter(cca_email=target_email).first()
+
+    def _get_account_for_code(target_email: str, activation_code: str):
+        account = Student.objects.filter(cca_email=target_email, activation_code=activation_code).first()
+        if account:
+            return account
+        account = PracticumCoordinator.objects.filter(cca_email=target_email, activation_code=activation_code).first()
+        if account:
+            return account
+        return PracticumInstructor.objects.filter(cca_email=target_email, activation_code=activation_code).first()
+
     if request.method == "POST":
         email = request.POST.get("cca_email", "").strip().lower()
         stage = request.POST.get("stage", "send")
@@ -225,43 +261,36 @@ def activate_account(request):
                     return render(request, "auth/activation.html", context)
 
             code = f"{secrets.randbelow(10**6):06d}"
-            updated = Student.objects.filter(cca_email=email).update(
-                activation_code=code,
-                active_status=False,
-                is_password_temp=True,
-            )
-            if not updated:
-                updated = PracticumCoordinator.objects.filter(cca_email=email).update(
-                    activation_code=code,
-                    active_status=False,
-                    is_password_temp=True,
-                )
-            if not updated:
-                updated = PracticumInstructor.objects.filter(cca_email=email).update(
-                    activation_code=code,
-                    active_status=False,
-                    is_password_temp=True,
-                )
-            if not updated:
+            account = _get_account_for_activation(email)
+            if not account:
                 context["message"] = "Email not found. Please contact the admin."
                 context["message_type"] = "error"
             else:
-                subject = "ICSLIS OJT System Activation Code"
-                text_body = f"Your activation code is: {code}"
-                html_body = render_to_string(
-                    "emails/activation_code.html",
-                    {"activation_code": code, "email": email},
-                )
-                msg = EmailMultiAlternatives(subject, text_body, None, [email])
-                msg.attach_alternative(html_body, "text/html")
-                _attach_logo(msg)
-                msg.send()
-                context["message"] = "Activation code sent. Please check your email."
-                context["message_type"] = "success"
-                context["show_code"] = True
-                context["email"] = email
-                context["cooldown_seconds"] = 60
-                request.session[last_key] = timezone.now().isoformat()
+                account.activation_code = code
+                account.active_status = False
+                account.is_password_temp = True
+                account.save(update_fields=["activation_code", "active_status", "is_password_temp"])
+                try:
+                    subject = "ICSLIS OJT System Activation Code"
+                    text_body = f"Your activation code is: {code}"
+                    html_body = render_to_string(
+                        "emails/activation_code.html",
+                        {"activation_code": code, "email": email},
+                    )
+                    msg = EmailMultiAlternatives(subject, text_body, None, [email])
+                    msg.attach_alternative(html_body, "text/html")
+                    _attach_logo(msg)
+                    msg.send()
+                    context["message"] = "Activation code sent. Please check your email."
+                    context["message_type"] = "success"
+                    context["show_code"] = True
+                    context["email"] = email
+                    context["cooldown_seconds"] = 60
+                    request.session[last_key] = timezone.now().isoformat()
+                except Exception:
+                    logger.exception("Failed to send activation code email to %s", email)
+                    context["message"] = "Unable to send activation code right now. Please try again later."
+                    context["message_type"] = "error"
             return render(request, "auth/activation.html", context)
 
         code = request.POST.get("activation_code", "").strip()
@@ -272,47 +301,36 @@ def activate_account(request):
             context["email"] = email
             return render(request, "auth/activation.html", context)
 
-        temp_password = secrets.token_urlsafe(6)
-        hashed_password = make_password(temp_password)
-        updated = Student.objects.filter(
-            cca_email=email, activation_code=code
-        ).update(
-            active_status=True,
-            password=hashed_password,
-            is_password_temp=True,
-        )
-        if not updated:
-            updated = PracticumCoordinator.objects.filter(
-                cca_email=email, activation_code=code
-            ).update(
-                active_status=True,
-                password=hashed_password,
-                is_password_temp=True,
-            )
-        if not updated:
-            updated = PracticumInstructor.objects.filter(
-                cca_email=email, activation_code=code
-            ).update(
-                active_status=True,
-                password=hashed_password,
-                is_password_temp=True,
-            )
+        account = _get_account_for_code(email, code)
+        if account:
+            temp_password = secrets.token_urlsafe(6)
+            try:
+                subject = "ICSLIS OJT System Temporary Password"
+                text_body = (
+                    "Your account is now active.\n"
+                    f"Temporary password: {temp_password}\n"
+                    "Please log in and change your password immediately."
+                )
+                html_body = render_to_string(
+                    "emails/temp_password.html",
+                    {"temp_password": temp_password, "email": email},
+                )
+                msg = EmailMultiAlternatives(subject, text_body, None, [email])
+                msg.attach_alternative(html_body, "text/html")
+                _attach_logo(msg)
+                msg.send()
+            except Exception:
+                logger.exception("Failed to send temporary password email to %s", email)
+                context["message"] = "Account activation email failed. Please try again later."
+                context["message_type"] = "error"
+                context["show_code"] = True
+                context["email"] = email
+                return render(request, "auth/activation.html", context)
 
-        if updated:
-            subject = "ICSLIS OJT System Temporary Password"
-            text_body = (
-                "Your account is now active.\n"
-                f"Temporary password: {temp_password}\n"
-                "Please log in and change your password immediately."
-            )
-            html_body = render_to_string(
-                "emails/temp_password.html",
-                {"temp_password": temp_password, "email": email},
-            )
-            msg = EmailMultiAlternatives(subject, text_body, None, [email])
-            msg.attach_alternative(html_body, "text/html")
-            _attach_logo(msg)
-            msg.send()
+            account.active_status = True
+            account.password = make_password(temp_password)
+            account.is_password_temp = True
+            account.save(update_fields=["active_status", "password", "is_password_temp"])
             request.session["flash_message"] = "Account activated. Temporary password sent to your email."
             request.session["flash_message_type"] = "success"
             return redirect("front_page")
@@ -367,9 +385,11 @@ def change_temp_password(request):
         account.password = make_password(new_password)
         account.is_password_temp = False
         account.save(update_fields=["password", "is_password_temp"])
-        context["message"] = "Password updated. You can now sign in."
-        context["message_type"] = "success"
-        return render(request, "auth/login.html", context)
+        request.session.pop("account_id", None)
+        request.session.pop("account_type", None)
+        request.session["flash_message"] = "Password updated. You can now sign in."
+        request.session["flash_message_type"] = "success"
+        return redirect("front_page")
 
     return render(request, "auth/change_temp_password.html", context)
 
