@@ -427,19 +427,6 @@
 
       <section class="panel section-panel" id="add_account_panel">
         <h2>Add Account</h2>
-        <section class="panel" style="margin-bottom:16px;">
-          <h2 style="margin-bottom:12px;">Import Students (CSV)</h2>
-          <form method="post" action="{% url 'manage_accounts' %}" enctype="multipart/form-data" style="display:flex;gap:12px;align-items:end;flex-wrap:wrap;">
-            {% csrf_token %}
-            <input type="hidden" name="action" value="import_student_csv" />
-            <div class="form-group" style="min-width:260px;">
-              <label for="student_csv">Student CSV File</label>
-              <input id="student_csv" name="student_csv" type="file" accept=".csv,text/csv" required />
-            </div>
-            <button class="btn" type="submit">Import CSV</button>
-            <a class="btn secondary" href="{% url 'download_students_csv_template' %}">Download Template</a>
-          </form>
-        </section>
         <div class="form-grid" style="margin-bottom: 24px; max-width: 400px;">
           <div class="form-group">
             <label>Select Account Type</label>
@@ -502,6 +489,19 @@
             <button class="btn" type="submit" id="add_account_btn">Add Student</button>
           </div>
         </form>
+        <section class="panel" style="margin-top:16px;">
+          <h2 style="margin-bottom:12px;">Import Students (CSV)</h2>
+          <form method="post" action="{% url 'manage_accounts' %}" enctype="multipart/form-data" style="display:flex;gap:12px;align-items:end;flex-wrap:wrap;">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="import_student_csv" />
+            <div class="form-group" style="min-width:260px;">
+              <label for="student_csv">Student CSV File</label>
+              <input id="student_csv" name="student_csv" type="file" accept=".csv,text/csv" required />
+            </div>
+            <button class="btn" type="submit">Import CSV</button>
+            <a class="btn secondary" href="{% url 'download_students_csv_template' %}">Download Template</a>
+          </form>
+        </section>
       </section>
 
       <section class="panel section-panel" id="students_panel">
