@@ -143,14 +143,22 @@ def forgot_password(request):
 
             subject = "ICSLIS OJT System Password Reset Code"
             text_body = f"Your password reset code is: {code}"
-            html_body = render_to_string(
-                "emails/recovery_code.html",
-                {"recovery_code": code, "email": email},
-            )
-            msg = EmailMultiAlternatives(subject, text_body, None, [email])
-            msg.attach_alternative(html_body, "text/html")
-            _attach_logo(msg)
-            msg.send()
+            try:
+                html_body = render_to_string(
+                    "emails/recovery_code.html",
+                    {"recovery_code": code, "email": email},
+                )
+                msg = EmailMultiAlternatives(subject, text_body, None, [email])
+                msg.attach_alternative(html_body, "text/html")
+                _attach_logo(msg)
+                msg.send()
+            except Exception:
+                logger.exception("Failed to send password reset code email to %s", email)
+                context["message"] = "Unable to send reset code right now. Please try again later."
+                context["message_type"] = "error"
+                context["show_code"] = True
+                context["email"] = email
+                return render(request, "logs/forgot_password.html", context)
 
             context["message"] = "Reset code sent. Please check your email."
             context["message_type"] = "success"
