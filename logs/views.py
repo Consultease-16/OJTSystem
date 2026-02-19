@@ -1566,9 +1566,10 @@ def weekly_journal_weeks(request):
         return JsonResponse({"ok": False, "message": "Unauthorized."}, status=401)
 
     section = (request.GET.get("section") or "").strip()
+    student_id = (request.GET.get("student_id") or "").strip()
     month = request.GET.get("month")
     year = request.GET.get("year")
-    if not section or not month or not year:
+    if not section or not student_id or not month or not year:
         return JsonResponse({"ok": False, "message": "Missing parameters."}, status=400)
 
     with connection.cursor() as cursor:
@@ -1577,10 +1578,10 @@ def weekly_journal_weeks(request):
             """
             select id, week_no, due_date, submitted_at, status, submission_day, status_note
             from weekly_journal
-            where section = %s and month = %s and year = %s
+            where section = %s and student_id = %s and month = %s and year = %s
             order by week_no
             """,
-            [section, int(month), int(year)],
+            [section, student_id, int(month), int(year)],
         )
         rows = cursor.fetchall()
 
@@ -1614,7 +1615,7 @@ def update_weekly_journal_check(request):
     if not attendance_id or checked is None:
         return JsonResponse({"ok": False, "message": "Missing parameters."}, status=400)
 
-    allowed_statuses = {"late_excused", "late"}
+    allowed_statuses = {"on_time", "late_excused", "late"}
     status_override = request.POST.get("status_override")
     status_note = (request.POST.get("status_note") or "").strip()
 

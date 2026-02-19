@@ -151,6 +151,19 @@
       white-space: nowrap;
     }
 
+    .search-live-status {
+      margin-top: -6px;
+      margin-bottom: 14px;
+      min-height: 18px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .search-live-status.is-loading {
+      color: var(--accent);
+      opacity: 1;
+    }
+
 
     .section-header {
       display: flex;
@@ -505,6 +518,22 @@
       width: 100%;
       justify-content: flex-start;
       text-align: left;
+      background: #eef2f8;
+      color: var(--accent);
+      box-shadow: inset 0 0 0 1px rgba(15, 43, 82, 0.2);
+    }
+
+    .late-options .btn:hover {
+      background: #e2e9f4;
+      color: var(--accent);
+      box-shadow: inset 0 0 0 1px rgba(15, 43, 82, 0.28);
+    }
+
+    .late-options .btn.is-selected {
+      background: linear-gradient(135deg, var(--accent) 0%, #123e77 45%, var(--accent-3) 100%);
+      color: #fff;
+      box-shadow: 0 0 0 2px rgba(217, 182, 90, 0.95), 0 12px 26px rgba(15, 43, 82, 0.32);
+      transform: translateY(-1px);
     }
 
     .late-note {
@@ -712,13 +741,14 @@
         {% endif %}
 
         <form class="filters" method="get" action="" id="records_filter_form" style="margin-bottom: 20px;">
-          <input type="text" name="q" placeholder="Search student name or ID" value="{{ filters.q|default:'' }}" />
-          <input type="text" name="program" placeholder="Section / Program" value="{{ filters.program|default:'' }}" />
+          <input type="text" name="q" id="records_search_q" placeholder="Search student name or ID" value="{{ filters.q|default:'' }}" />
+          <input type="text" name="program" id="records_search_program" placeholder="Section / Program" value="{{ filters.program|default:'' }}" />
           <select name="school_year" id="school_year_filter" data-selected="{{ filters.school_year|default:'' }}">
             <option value="">School Year</option>
           </select>
           <button type="submit" id="records_search_btn">Search</button>
         </form>
+        <div id="records_search_status" class="search-live-status" aria-live="polite"></div>
 
         <div class="table-wrap">
           <table>
@@ -1090,6 +1120,7 @@
           <div id="late_status_alerts"></div>
           <div class="late-options">
             <button class="btn" type="button" id="late_option_late">Mark as Late</button>
+            <button class="btn secondary" type="button" id="late_option_on_time">Mark as In-Time</button>
             <button class="btn secondary" type="button" id="late_option_late_excused">Mark as Late (Valid Reason)</button>
           </div>
           <div class="late-note" id="late_note_group" style="display: none;">
@@ -1816,26 +1847,100 @@
 
     const filterForm = document.getElementById('records_filter_form');
     const searchBtn = document.getElementById('records_search_btn');
+    const recordsSearchInput = document.getElementById('records_search_q');
+    const recordsProgramInput = document.getElementById('records_search_program');
+    const recordsSchoolYearInput = document.getElementById('school_year_filter');
+    const recordsSearchStatus = document.getElementById('records_search_status');
+    let recordsSearchDebounce;
+    let recordsSearchInProgress = false;
+    let recordsSearchQueued = false;
+
+    const buildRecordsSearchStatus = (isLoading) => {
+      const q = (recordsSearchInput?.value || '').trim();
+      const program = (recordsProgramInput?.value || '').trim();
+      const schoolYear = (recordsSchoolYearInput?.value || recordsSchoolYearInput?.dataset.selected || '').trim();
+
+      const parts = [];
+      if (q) parts.push(`Name/ID: "${q}"`);
+      if (program) parts.push(`Section/Program: "${program}"`);
+      if (schoolYear) parts.push(`School Year: ${schoolYear}`);
+
+      if (parts.length === 0) {
+        return isLoading ? 'Refreshing records...' : 'Showing all records.';
+      }
+
+      const prefix = isLoading ? 'Searching' : 'Showing results for';
+      return `${prefix} ${parts.join(' | ')}.`;
+    };
+
+    const updateRecordsSearchStatus = (isLoading) => {
+      if (!recordsSearchStatus) return;
+      recordsSearchStatus.textContent = buildRecordsSearchStatus(isLoading);
+      recordsSearchStatus.classList.toggle('is-loading', Boolean(isLoading));
+    };
+
+    const runRecordsSearch = async () => {
+      if (!filterForm) return;
+      if (recordsSearchInProgress) {
+        recordsSearchQueued = true;
+        return;
+      }
+
+      recordsSearchInProgress = true;
+      if (searchBtn) {
+        searchBtn.disabled = true;
+        searchBtn.classList.add('is-loading');
+        searchBtn.dataset.originalText = searchBtn.textContent;
+        searchBtn.textContent = 'Searching...';
+      }
+
+      updateRecordsSearchStatus(true);
+      const formData = new FormData(filterForm);
+      const params = new URLSearchParams(formData);
+      const url = `${window.location.pathname}?${params.toString()}`;
+      window.history.replaceState({}, '', url);
+      await refreshTable(url);
+
+      if (searchBtn) {
+        searchBtn.disabled = false;
+        searchBtn.classList.remove('is-loading');
+        searchBtn.textContent = searchBtn.dataset.originalText || 'Search';
+      }
+      recordsSearchInProgress = false;
+      updateRecordsSearchStatus(false);
+
+      if (recordsSearchQueued) {
+        recordsSearchQueued = false;
+        runRecordsSearch();
+      }
+    };
+
+    const queueRecordsSearch = () => {
+      updateRecordsSearchStatus(false);
+      clearTimeout(recordsSearchDebounce);
+      recordsSearchDebounce = setTimeout(() => {
+        runRecordsSearch();
+      }, 300);
+    };
+
     if (filterForm) {
       filterForm.addEventListener('submit', async (event) => {
         event.preventDefault();
-        if (searchBtn) {
-          searchBtn.disabled = true;
-          searchBtn.classList.add('is-loading');
-          searchBtn.dataset.originalText = searchBtn.textContent;
-          searchBtn.textContent = 'Searching...';
-        }
-        const formData = new FormData(filterForm);
-        const params = new URLSearchParams(formData);
-        const url = `${window.location.pathname}?${params.toString()}`;
-        window.history.replaceState({}, '', url);
-        await refreshTable(url);
-        if (searchBtn) {
-          searchBtn.disabled = false;
-          searchBtn.classList.remove('is-loading');
-          searchBtn.textContent = searchBtn.dataset.originalText || 'Search';
-        }
+        clearTimeout(recordsSearchDebounce);
+        await runRecordsSearch();
       });
+
+      if (recordsSearchInput) {
+        recordsSearchInput.addEventListener('input', queueRecordsSearch);
+      }
+      if (recordsProgramInput) {
+        recordsProgramInput.addEventListener('input', queueRecordsSearch);
+      }
+      if (recordsSchoolYearInput) {
+        recordsSchoolYearInput.addEventListener('change', queueRecordsSearch);
+      }
+
+      updateRecordsSearchStatus(false);
     }
 
     const syncForm = document.getElementById('sync_students_form');
@@ -1891,6 +1996,7 @@
     const confirmCancel = document.getElementById('confirm_cancel');
     const lateStatusModal = document.getElementById('late_status_modal');
     const lateOptionLate = document.getElementById('late_option_late');
+    const lateOptionOnTime = document.getElementById('late_option_on_time');
     const lateOptionLateExcused = document.getElementById('late_option_late_excused');
     const lateNoteGroup = document.getElementById('late_note_group');
     const lateNoteInput = document.getElementById('late_note_input');
@@ -2005,14 +2111,19 @@
       const syncLateOptionButtons = () => {
         const pairs = [
           [lateOptionLate, "late"],
+          [lateOptionOnTime, "on_time"],
           [lateOptionLateExcused, "late_excused"],
         ];
         pairs.forEach(([btn, value]) => {
           if (!btn) return;
           if (selectedStatus === value) {
             btn.classList.remove("secondary");
+            btn.classList.add("is-selected");
+            btn.setAttribute("aria-pressed", "true");
           } else {
             btn.classList.add("secondary");
+            btn.classList.remove("is-selected");
+            btn.setAttribute("aria-pressed", "false");
           }
         });
         if (lateNoteGroup) {
@@ -2025,6 +2136,7 @@
         if (lateNoteInput) lateNoteInput.value = "";
         if (lateStatusAlerts) lateStatusAlerts.innerHTML = "";
         if (lateOptionLate) lateOptionLate.removeEventListener("click", pickLate);
+        if (lateOptionOnTime) lateOptionOnTime.removeEventListener("click", pickOnTime);
         if (lateOptionLateExcused) lateOptionLateExcused.removeEventListener("click", pickLateExcused);
         if (lateStatusConfirm) lateStatusConfirm.removeEventListener("click", confirmChoice);
         if (lateStatusCancel) lateStatusCancel.removeEventListener("click", cancelChoice);
@@ -2033,6 +2145,10 @@
 
       const pickLate = () => {
         selectedStatus = "late";
+        syncLateOptionButtons();
+      };
+      const pickOnTime = () => {
+        selectedStatus = "on_time";
         syncLateOptionButtons();
       };
       const pickLateExcused = () => {
@@ -2061,6 +2177,7 @@
       syncLateOptionButtons();
       lateStatusModal.classList.add("active");
       if (lateOptionLate) lateOptionLate.addEventListener("click", pickLate);
+      if (lateOptionOnTime) lateOptionOnTime.addEventListener("click", pickOnTime);
       if (lateOptionLateExcused) lateOptionLateExcused.addEventListener("click", pickLateExcused);
       if (lateStatusConfirm) lateStatusConfirm.addEventListener("click", confirmChoice);
       if (lateStatusCancel) lateStatusCancel.addEventListener("click", cancelChoice);
@@ -2121,9 +2238,21 @@
         if (attendanceSubmissionModal) attendanceSubmissionModal.value = 'Not set';
         return;
       }
+      if (!currentModalStudentId) {
+        if (attendanceWeeksModal) {
+          attendanceWeeksModal.innerHTML = '<p class="calendar-note">No student selected.</p>';
+        }
+        if (attendanceSubmissionModal) attendanceSubmissionModal.value = 'Not set';
+        return;
+      }
       const month = Number(attendanceMonthModal?.value);
       const year = Number(attendanceYearModal?.value);
-      const params = new URLSearchParams({ section, month: month + 1, year });
+      const params = new URLSearchParams({
+        section,
+        student_id: currentModalStudentId,
+        month: month + 1,
+        year,
+      });
       const response = await fetch(`${weeklyJournalUrl}?${params.toString()}`, {
         headers: { "X-Requested-With": "XMLHttpRequest" },
       });
@@ -2356,6 +2485,8 @@
           showAttendanceAlert("Marked as late (valid reason).", "success");
         } else if (checkbox.checked && data.status === "late") {
           showAttendanceAlert("Marked as late.", "success");
+        } else if (checkbox.checked && data.status === "on_time") {
+          showAttendanceAlert("Marked as in-time.", "success");
         } else if (checkbox.checked) {
           showAttendanceAlert("Marked as submitted.", "success");
         } else {

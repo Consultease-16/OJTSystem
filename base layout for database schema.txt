@@ -2,7 +2,7 @@ users
 
 OJTSystem2026
 email app password: tzcw jtzv qdzv hnln
-
+Practicum Coor password: 0JTPr@cticum
 
 student
 cca_email
