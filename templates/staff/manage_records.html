@@ -852,7 +852,7 @@
 
       <section class="panel" id="section_instructors_panel">
         <h2>Assigned Instructor</h2>
-        <form class="schedule-form" method="post" action="{% url 'section_instructors' %}">
+        <form class="schedule-form" id="section_assignment_form" method="post" action="{% url 'section_instructors' %}">
           {% csrf_token %}
           <div class="field">
             <label for="assignment_school_year">School Year</label>
@@ -915,9 +915,10 @@
                 <th>Section</th>
                 <th>School Year</th>
                 <th>Instructor</th>
+                <th>Action</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody id="assignment_list_body">
               {% for row in section_assignments %}
               <tr>
                 <td>{{ row.section }}</td>
@@ -931,10 +932,22 @@
                     <span style="color: var(--muted);">Unassigned</span>
                   {% endif %}
                 </td>
+                <td>
+                  {% if row.instructor_name or row.coordinator_name %}
+                    <form method="post" action="{% url 'section_instructors' %}" class="assignment-remove-form" style="margin: 0;">
+                      {% csrf_token %}
+                      <input type="hidden" name="section_id" value="{{ row.section_id }}" />
+                      <input type="hidden" name="instructor_id" value="" />
+                      <button type="submit" class="btn secondary">Remove</button>
+                    </form>
+                  {% else %}
+                    <span style="color: var(--muted);">-</span>
+                  {% endif %}
+                </td>
               </tr>
               {% empty %}
               <tr>
-                <td colspan="3">No sections found.</td>
+                <td colspan="4">No sections found.</td>
               </tr>
               {% endfor %}
             </tbody>
@@ -2005,6 +2018,23 @@
 
     const assignmentSchoolYear = document.getElementById('assignment_school_year');
     const assignmentSection = document.getElementById('assignment_section');
+    const assignmentForm = document.getElementById('section_assignment_form');
+    const assignmentListBody = document.getElementById('assignment_list_body');
+
+    const refreshAssignmentTable = async () => {
+      if (!assignmentListBody) return;
+      const response = await fetch(window.location.href, {
+        headers: { "X-Requested-With": "XMLHttpRequest" }
+      });
+      if (!response.ok) throw new Error(`Failed to refresh assignments (${response.status})`);
+      const html = await response.text();
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, "text/html");
+      const nextBody = doc.getElementById("assignment_list_body");
+      if (nextBody) {
+        assignmentListBody.innerHTML = nextBody.innerHTML;
+      }
+    };
 
     if (assignmentSchoolYear && assignmentSection) {
       const sectionOptions = Array.from(assignmentSection.querySelectorAll('option[data-school-year]'));
@@ -2028,6 +2058,63 @@
         filterSections(assignmentSchoolYear.value);
       });
     }
+
+    if (assignmentForm) {
+      assignmentForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const formData = new FormData(assignmentForm);
+        const sectionId = (formData.get('section_id') || '').toString().trim();
+        if (!sectionId) {
+          showAlert("Please select a section.", "error");
+          return;
+        }
+        try {
+          const response = await fetch(assignmentForm.action, {
+            method: 'POST',
+            headers: {
+              "X-Requested-With": "XMLHttpRequest",
+              "X-CSRFToken": formData.get('csrfmiddlewaretoken') || "",
+            },
+            body: formData,
+          });
+          const data = await response.json().catch(() => null);
+          if (!response.ok || !data || !data.ok) {
+            showAlert(data?.message || "Failed to save assignment.", "error");
+            return;
+          }
+          showAlert(data.message || "Assignment saved.", "success");
+          await refreshAssignmentTable();
+        } catch (error) {
+          showAlert(error?.message || "Failed to save assignment.", "error");
+        }
+      });
+    }
+
+    document.addEventListener('submit', async (event) => {
+      const form = event.target.closest('.assignment-remove-form');
+      if (!form) return;
+      event.preventDefault();
+      const formData = new FormData(form);
+      try {
+        const response = await fetch(form.action, {
+          method: 'POST',
+          headers: {
+            "X-Requested-With": "XMLHttpRequest",
+            "X-CSRFToken": formData.get('csrfmiddlewaretoken') || "",
+          },
+          body: formData,
+        });
+        const data = await response.json().catch(() => null);
+        if (!response.ok || !data || !data.ok) {
+          showAlert(data?.message || "Failed to remove assignment.", "error");
+          return;
+        }
+        showAlert(data.message || "Assignment removed.", "success");
+        await refreshAssignmentTable();
+      } catch (error) {
+        showAlert(error?.message || "Failed to remove assignment.", "error");
+      }
+    });
 
     const submissionSchedules = [];
 

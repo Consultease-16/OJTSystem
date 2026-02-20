@@ -1098,12 +1098,17 @@ def manage_records(request):
 
 @never_cache
 def section_instructors_view(request):
+    is_ajax = request.headers.get("x-requested-with") == "XMLHttpRequest"
     if request.method != "POST":
+        if is_ajax:
+            return JsonResponse({"ok": False, "message": "Invalid request method."}, status=405)
         return redirect("manage_records")
 
     account_id = request.session.get("account_id")
     account_type = request.session.get("account_type")
     if not account_id or account_type not in {"coordinator", "instructor"}:
+        if is_ajax:
+            return JsonResponse({"ok": False, "message": "Please log in to continue."}, status=401)
         request.session["flash_message"] = "Please log in to continue."
         request.session["flash_message_type"] = "error"
         return redirect("front_page")
@@ -1122,6 +1127,8 @@ def section_instructors_view(request):
         instructor_id = staff_val
 
     if not section_id:
+        if is_ajax:
+            return JsonResponse({"ok": False, "message": "Please select a section."}, status=400)
         request.session["flash_message"] = "Please select a section."
         request.session["flash_message_type"] = "error"
         return redirect("manage_records")
@@ -1145,6 +1152,8 @@ def section_instructors_view(request):
                     coordinator_id if coordinator_id else None
                 ],
             )
+            if is_ajax:
+                return JsonResponse({"ok": True, "message": "Instructor assigned to section."})
             request.session["flash_message"] = "Instructor assigned to section."
             request.session["flash_message_type"] = "success"
         else:
@@ -1152,6 +1161,8 @@ def section_instructors_view(request):
                 "delete from section_instructors where section_id = %s",
                 [section_id],
             )
+            if is_ajax:
+                return JsonResponse({"ok": True, "message": "Assignment removed."})
             request.session["flash_message"] = "Assignment removed."
             request.session["flash_message_type"] = "success"
 
