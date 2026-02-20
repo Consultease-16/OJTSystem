@@ -446,16 +446,21 @@
     .assignment-table th:last-child,
     .assignment-table td:last-child {
       width: 140px;
-      padding-right: 16px;
+      text-align: center;
+      padding-right: 12px;
+      padding-left: 12px;
     }
 
     .assignment-action-cell {
-      text-align: left;
+      text-align: center;
+      vertical-align: middle;
     }
 
     .assignment-remove-form {
       margin: 0;
       display: inline-flex;
+      justify-content: center;
+      align-items: center;
     }
 
     .check {
@@ -2077,43 +2082,53 @@
     if (assignmentForm) {
       assignmentForm.addEventListener('submit', async (event) => {
         event.preventDefault();
-        const submitBtn = assignmentForm.querySelector('button[type="submit"]');
         const formData = new FormData(assignmentForm);
         const sectionId = (formData.get('section_id') || '').toString().trim();
+        const instructorId = (formData.get('instructor_id') || '').toString().trim();
         if (!sectionId) {
           showAlert("Please select a section.", "error");
           return;
         }
-        if (submitBtn) {
-          submitBtn.disabled = true;
-          submitBtn.classList.add('is-loading');
-        }
-        setScheduleActionLoading(true, "Adding instructor...");
-        try {
-          const response = await fetch(assignmentForm.action, {
-            method: 'POST',
-            headers: {
-              "X-Requested-With": "XMLHttpRequest",
-              "X-CSRFToken": formData.get('csrfmiddlewaretoken') || "",
-            },
-            body: formData,
-          });
-          const data = await response.json().catch(() => null);
-          if (!response.ok || !data || !data.ok) {
-            showAlert(data?.message || "Failed to save assignment.", "error");
-            return;
+        const selectedSection = assignmentSection?.selectedOptions?.[0]?.textContent?.trim() || "Selected section";
+        const selectedYear = assignmentSchoolYear?.value || assignmentSection?.selectedOptions?.[0]?.dataset?.schoolYear || "Selected year";
+        const selectedInstructor = assignmentForm.querySelector('#assignment_instructor')?.selectedOptions?.[0]?.textContent?.trim() || "Unassigned";
+        const actionLabel = instructorId ? "add this instructor assignment" : "mark this section as unassigned";
+        openConfirm(
+          `Please confirm: ${actionLabel} for ${selectedSection} (${selectedYear}) using "${selectedInstructor}"?`,
+          async () => {
+            const submitBtn = assignmentForm.querySelector('button[type="submit"]');
+            if (submitBtn) {
+              submitBtn.disabled = true;
+              submitBtn.classList.add('is-loading');
+            }
+            setScheduleActionLoading(true, "Adding instructor...");
+            try {
+              const response = await fetch(assignmentForm.action, {
+                method: 'POST',
+                headers: {
+                  "X-Requested-With": "XMLHttpRequest",
+                  "X-CSRFToken": formData.get('csrfmiddlewaretoken') || "",
+                },
+                body: formData,
+              });
+              const data = await response.json().catch(() => null);
+              if (!response.ok || !data || !data.ok) {
+                showAlert(data?.message || "Failed to save assignment.", "error");
+                return;
+              }
+              showAlert(data.message || "Assignment saved.", "success");
+              await refreshAssignmentTable();
+            } catch (error) {
+              showAlert(error?.message || "Failed to save assignment.", "error");
+            } finally {
+              setScheduleActionLoading(false);
+              if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.classList.remove('is-loading');
+              }
+            }
           }
-          showAlert(data.message || "Assignment saved.", "success");
-          await refreshAssignmentTable();
-        } catch (error) {
-          showAlert(error?.message || "Failed to save assignment.", "error");
-        } finally {
-          setScheduleActionLoading(false);
-          if (submitBtn) {
-            submitBtn.disabled = false;
-            submitBtn.classList.remove('is-loading');
-          }
-        }
+        );
       });
     }
 
@@ -2121,38 +2136,46 @@
       const form = event.target.closest('.assignment-remove-form');
       if (!form) return;
       event.preventDefault();
-      const removeBtn = form.querySelector('button[type="submit"]');
       const formData = new FormData(form);
-      if (removeBtn) {
-        removeBtn.disabled = true;
-        removeBtn.classList.add('is-loading');
-      }
-      setScheduleActionLoading(true, "Removing instructor...");
-      try {
-        const response = await fetch(form.action, {
-          method: 'POST',
-          headers: {
-            "X-Requested-With": "XMLHttpRequest",
-            "X-CSRFToken": formData.get('csrfmiddlewaretoken') || "",
-          },
-          body: formData,
-        });
-        const data = await response.json().catch(() => null);
-        if (!response.ok || !data || !data.ok) {
-          showAlert(data?.message || "Failed to remove assignment.", "error");
-          return;
+      const row = form.closest('tr');
+      const sectionText = row?.children?.[0]?.textContent?.trim() || "this section";
+      const yearText = row?.children?.[1]?.textContent?.trim() || "";
+      openConfirm(
+        `Remove assigned instructor from ${sectionText}${yearText ? ` (${yearText})` : ""}?`,
+        async () => {
+          const removeBtn = form.querySelector('button[type="submit"]');
+          if (removeBtn) {
+            removeBtn.disabled = true;
+            removeBtn.classList.add('is-loading');
+          }
+          setScheduleActionLoading(true, "Removing instructor...");
+          try {
+            const response = await fetch(form.action, {
+              method: 'POST',
+              headers: {
+                "X-Requested-With": "XMLHttpRequest",
+                "X-CSRFToken": formData.get('csrfmiddlewaretoken') || "",
+              },
+              body: formData,
+            });
+            const data = await response.json().catch(() => null);
+            if (!response.ok || !data || !data.ok) {
+              showAlert(data?.message || "Failed to remove assignment.", "error");
+              return;
+            }
+            showAlert(data.message || "Assignment removed.", "success");
+            await refreshAssignmentTable();
+          } catch (error) {
+            showAlert(error?.message || "Failed to remove assignment.", "error");
+          } finally {
+            setScheduleActionLoading(false);
+            if (removeBtn) {
+              removeBtn.disabled = false;
+              removeBtn.classList.remove('is-loading');
+            }
+          }
         }
-        showAlert(data.message || "Assignment removed.", "success");
-        await refreshAssignmentTable();
-      } catch (error) {
-        showAlert(error?.message || "Failed to remove assignment.", "error");
-      } finally {
-        setScheduleActionLoading(false);
-        if (removeBtn) {
-          removeBtn.disabled = false;
-          removeBtn.classList.remove('is-loading');
-        }
-      }
+      );
     });
 
     const submissionSchedules = [];
