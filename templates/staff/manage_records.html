@@ -443,6 +443,21 @@
       white-space: nowrap;
     }
 
+    .assignment-table th:last-child,
+    .assignment-table td:last-child {
+      width: 140px;
+      padding-right: 16px;
+    }
+
+    .assignment-action-cell {
+      text-align: left;
+    }
+
+    .assignment-remove-form {
+      margin: 0;
+      display: inline-flex;
+    }
+
     .check {
       display: inline-flex;
       align-items: center;
@@ -909,7 +924,7 @@
           <button type="submit">Add Instructor</button>
         </form>
         <div class="table-wrap" style="margin-top: 16px;">
-          <table>
+          <table class="assignment-table">
             <thead>
               <tr>
                 <th>Section</th>
@@ -932,9 +947,9 @@
                     <span style="color: var(--muted);">Unassigned</span>
                   {% endif %}
                 </td>
-                <td>
+                <td class="assignment-action-cell">
                   {% if row.instructor_name or row.coordinator_name %}
-                    <form method="post" action="{% url 'section_instructors' %}" class="assignment-remove-form" style="margin: 0;">
+                    <form method="post" action="{% url 'section_instructors' %}" class="assignment-remove-form">
                       {% csrf_token %}
                       <input type="hidden" name="section_id" value="{{ row.section_id }}" />
                       <input type="hidden" name="instructor_id" value="" />
@@ -2062,12 +2077,18 @@
     if (assignmentForm) {
       assignmentForm.addEventListener('submit', async (event) => {
         event.preventDefault();
+        const submitBtn = assignmentForm.querySelector('button[type="submit"]');
         const formData = new FormData(assignmentForm);
         const sectionId = (formData.get('section_id') || '').toString().trim();
         if (!sectionId) {
           showAlert("Please select a section.", "error");
           return;
         }
+        if (submitBtn) {
+          submitBtn.disabled = true;
+          submitBtn.classList.add('is-loading');
+        }
+        setScheduleActionLoading(true, "Adding instructor...");
         try {
           const response = await fetch(assignmentForm.action, {
             method: 'POST',
@@ -2086,6 +2107,12 @@
           await refreshAssignmentTable();
         } catch (error) {
           showAlert(error?.message || "Failed to save assignment.", "error");
+        } finally {
+          setScheduleActionLoading(false);
+          if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.classList.remove('is-loading');
+          }
         }
       });
     }
@@ -2094,7 +2121,13 @@
       const form = event.target.closest('.assignment-remove-form');
       if (!form) return;
       event.preventDefault();
+      const removeBtn = form.querySelector('button[type="submit"]');
       const formData = new FormData(form);
+      if (removeBtn) {
+        removeBtn.disabled = true;
+        removeBtn.classList.add('is-loading');
+      }
+      setScheduleActionLoading(true, "Removing instructor...");
       try {
         const response = await fetch(form.action, {
           method: 'POST',
@@ -2113,6 +2146,12 @@
         await refreshAssignmentTable();
       } catch (error) {
         showAlert(error?.message || "Failed to remove assignment.", "error");
+      } finally {
+        setScheduleActionLoading(false);
+        if (removeBtn) {
+          removeBtn.disabled = false;
+          removeBtn.classList.remove('is-loading');
+        }
       }
     });
 
