@@ -940,7 +940,7 @@
             </thead>
             <tbody id="assignment_list_body">
               {% for row in section_assignments %}
-              <tr>
+              <tr data-school-year="{{ row.school_year }}">
                 <td>{{ row.section }}</td>
                 <td>{{ row.school_year }}</td>
                 <td>
@@ -2038,8 +2038,22 @@
 
     const assignmentSchoolYear = document.getElementById('assignment_school_year');
     const assignmentSection = document.getElementById('assignment_section');
+    const assignmentInstructor = document.getElementById('assignment_instructor');
     const assignmentForm = document.getElementById('section_assignment_form');
     const assignmentListBody = document.getElementById('assignment_list_body');
+
+    const filterAssignmentRowsByYear = (year) => {
+      if (!assignmentListBody) return;
+      const rows = Array.from(assignmentListBody.querySelectorAll('tr'));
+      rows.forEach((row) => {
+        const rowYear = row.dataset.schoolYear;
+        if (!rowYear) {
+          row.hidden = false;
+          return;
+        }
+        row.hidden = Boolean(year) && rowYear !== year;
+      });
+    };
 
     const refreshAssignmentTable = async () => {
       if (!assignmentListBody) return;
@@ -2053,6 +2067,7 @@
       const nextBody = doc.getElementById("assignment_list_body");
       if (nextBody) {
         assignmentListBody.innerHTML = nextBody.innerHTML;
+        filterAssignmentRowsByYear(assignmentSchoolYear?.value || "");
       }
     };
 
@@ -2075,8 +2090,12 @@
       };
 
       assignmentSchoolYear.addEventListener('change', () => {
-        filterSections(assignmentSchoolYear.value);
+        const selectedYear = assignmentSchoolYear.value;
+        filterSections(selectedYear);
+        filterAssignmentRowsByYear(selectedYear);
       });
+
+      filterAssignmentRowsByYear(assignmentSchoolYear.value);
     }
 
     if (assignmentForm) {
@@ -2089,12 +2108,15 @@
           showAlert("Please select a section.", "error");
           return;
         }
+        if (!instructorId) {
+          showAlert("Please select a practicum instructor.", "error");
+          return;
+        }
         const selectedSection = assignmentSection?.selectedOptions?.[0]?.textContent?.trim() || "Selected section";
         const selectedYear = assignmentSchoolYear?.value || assignmentSection?.selectedOptions?.[0]?.dataset?.schoolYear || "Selected year";
-        const selectedInstructor = assignmentForm.querySelector('#assignment_instructor')?.selectedOptions?.[0]?.textContent?.trim() || "Unassigned";
-        const actionLabel = instructorId ? "add this instructor assignment" : "mark this section as unassigned";
+        const selectedInstructor = assignmentInstructor?.selectedOptions?.[0]?.textContent?.trim() || "Selected instructor";
         openConfirm(
-          `Please confirm: ${actionLabel} for ${selectedSection} (${selectedYear}) using "${selectedInstructor}"?`,
+          `Please confirm: add instructor ${selectedInstructor} for section ${selectedSection}, S.Y. ${selectedYear}.`,
           async () => {
             const submitBtn = assignmentForm.querySelector('button[type="submit"]');
             if (submitBtn) {
@@ -2140,8 +2162,10 @@
       const row = form.closest('tr');
       const sectionText = row?.children?.[0]?.textContent?.trim() || "this section";
       const yearText = row?.children?.[1]?.textContent?.trim() || "";
+      const rawInstructorText = row?.children?.[2]?.textContent?.trim() || "this instructor";
+      const instructorText = rawInstructorText.replace(/\s*\(Coordinator\)\s*/i, "").trim();
       openConfirm(
-        `Remove assigned instructor from ${sectionText}${yearText ? ` (${yearText})` : ""}?`,
+        `Are you sure you want to remove instructor ${instructorText} for section ${sectionText}, S.Y. ${yearText}?`,
         async () => {
           const removeBtn = form.querySelector('button[type="submit"]');
           if (removeBtn) {
