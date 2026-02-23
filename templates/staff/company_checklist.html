@@ -537,7 +537,7 @@
     });
 
     const normalizeRow = (row) => ({
-      id: row.id,
+      rowKey: row.row_key,
       companyName: row.companyName || "",
       cityResolution: row.cityResolution || createStage(true),
       companySigning: row.companySigning || createStage(),
@@ -650,23 +650,23 @@
               type="text"
               placeholder="Enter company name"
               value="${(row.companyName || "").replace(/"/g, "&quot;")}"
-              data-row-id="${row.id}"
+              data-row-id="${row.rowKey}"
               data-field="companyName"
             />
           </td>
-          <td>${stageCell(row.id, "cityResolution", "Check", row.cityResolution, true, false)}</td>
-          <td>${stageCell(row.id, "companySigning", "Check", row.companySigning, false, compSigningDisabled)}</td>
-          <td>${stageCell(row.id, "officePresident", "Check", row.officePresident, false, officePresDisabled)}</td>
-          <td>${stageCell(row.id, "processedNotarized", "Check", row.processedNotarized, false, processedDisabled)}</td>
+          <td>${stageCell(row.rowKey, "cityResolution", "Check", row.cityResolution, true, false)}</td>
+          <td>${stageCell(row.rowKey, "companySigning", "Check", row.companySigning, false, compSigningDisabled)}</td>
+          <td>${stageCell(row.rowKey, "officePresident", "Check", row.officePresident, false, officePresDisabled)}</td>
+          <td>${stageCell(row.rowKey, "processedNotarized", "Check", row.processedNotarized, false, processedDisabled)}</td>
           <td class="row-actions">
-            <button class="btn-link" type="button" data-action="delete-row" data-row-id="${row.id}">Delete</button>
+            <button class="btn-link" type="button" data-action="delete-row" data-row-id="${row.rowKey}">Delete</button>
           </td>
         `;
         checklistBody.appendChild(tr);
       });
     };
 
-    const getRow = (rowId) => rows.find((r) => r.id === rowId);
+    const getRow = (rowId) => rows.find((r) => r.rowKey === rowId);
 
     const reloadRows = async () => {
       const data = await requestJson("GET");
@@ -677,10 +677,10 @@
     const persistRow = async (row) => {
       const data = await requestJson("POST", {
         action: "update",
-        row_id: row.id,
+        row_key: row.rowKey,
         row,
       });
-      const idx = rows.findIndex((r) => r.id === row.id);
+      const idx = rows.findIndex((r) => r.rowKey === row.rowKey);
       if (idx >= 0) {
         rows[idx] = normalizeRow(data.row);
       }
@@ -833,8 +833,8 @@
       if (!pendingDeleteRowId) return;
       setLoading(true, "Deleting company row...");
       try {
-        await requestJson("POST", { action: "delete", row_id: pendingDeleteRowId });
-        rows = rows.filter((row) => row.id !== pendingDeleteRowId);
+        await requestJson("POST", { action: "delete", row_key: pendingDeleteRowId });
+        rows = rows.filter((row) => row.rowKey !== pendingDeleteRowId);
         renderRows();
         closeDeleteModal();
       } catch (err) {

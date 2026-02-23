@@ -26,9 +26,9 @@ urlpatterns = [
     ),
     path('staff/handled-sections/', views.instructor_sections, name='instructor_sections'),
     path(
-        'staff/handled-sections/<uuid:section_id>/details/',
-        views.instructor_section_details,
-        name='instructor_section_details',
+        'staff/handled-sections/details/',
+        views.instructor_section_details_by_key,
+        name='instructor_section_details_by_key',
     ),
     path('staff/profile/', views.staff_profile, name='staff_profile'),
     path('staff/profile/upload/', views.upload_staff_profile_image, name='upload_staff_profile_image'),

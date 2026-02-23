@@ -493,7 +493,7 @@
                 <button
                   class="btn-view"
                   type="button"
-                  data-section-id="{{ row.section_id }}"
+                  data-section-key="{{ row.section_key }}"
                 >
                   View Section
                 </button>
@@ -545,7 +545,7 @@
       const closeBtn = document.querySelector('.close-btn');
       const backdrop = document.querySelector('.sidebar-backdrop');
       const body = document.body;
-      const detailsBaseUrl = "{% url 'instructor_sections' %}";
+      const detailsUrl = "{% url 'instructor_section_details_by_key' %}";
       let activeSectionId = null;
       let modalRefreshTimer = null;
 
@@ -711,12 +711,13 @@
 
       }
 
-      function getDetailsUrl(sectionId) {
-        return `${detailsBaseUrl}${sectionId}/details/`;
+      function getDetailsUrl(sectionKey) {
+        const params = new URLSearchParams({ section_key: sectionKey });
+        return `${detailsUrl}?${params.toString()}`;
       }
 
-      async function fetchSectionData(sectionId) {
-        const response = await fetch(getDetailsUrl(sectionId), {
+      async function fetchSectionData(sectionKey) {
+        const response = await fetch(getDetailsUrl(sectionKey), {
           method: 'GET',
           headers: { 'X-Requested-With': 'XMLHttpRequest' },
           credentials: 'same-origin',
@@ -742,11 +743,11 @@
         }
       }
 
-      async function openSectionModal(sectionId) {
-        if (!sectionId) return;
-        activeSectionId = sectionId;
+      async function openSectionModal(sectionKey) {
+        if (!sectionKey) return;
+        activeSectionId = sectionKey;
         try {
-          const data = await fetchSectionData(sectionId);
+          const data = await fetchSectionData(sectionKey);
           renderSectionModalData(data);
           modalBackdrop.classList.add('show');
           body.classList.remove('sidebar-open');
@@ -769,8 +770,8 @@
 
       document.querySelectorAll('.btn-view').forEach((btn) => {
         btn.addEventListener('click', function() {
-          const sectionId = this.getAttribute('data-section-id');
-          openSectionModal(sectionId);
+          const sectionKey = this.getAttribute('data-section-key');
+          openSectionModal(sectionKey);
         });
       });
 

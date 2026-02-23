@@ -25,6 +25,38 @@ from .models import PracticumCoordinator, PracticumInstructor, Student
 
 logger = logging.getLogger(__name__)
 
+
+def _session_token_bucket(request, namespace):
+    store = request.session.get("ui_token_map")
+    if not isinstance(store, dict):
+        store = {}
+    bucket = store.get(namespace)
+    if not isinstance(bucket, dict):
+        bucket = {}
+    return store, bucket
+
+
+def _reset_session_tokens(request, namespace):
+    store, _ = _session_token_bucket(request, namespace)
+    store[namespace] = {}
+    request.session["ui_token_map"] = store
+    request.session.modified = True
+
+
+def _mint_session_token(request, namespace, payload):
+    store, bucket = _session_token_bucket(request, namespace)
+    token = secrets.token_urlsafe(16)
+    bucket[token] = payload
+    store[namespace] = bucket
+    request.session["ui_token_map"] = store
+    request.session.modified = True
+    return token
+
+
+def _resolve_session_token(request, namespace, token):
+    _, bucket = _session_token_bucket(request, namespace)
+    return bucket.get((token or "").strip())
+
 def _attach_logo(message):
     logo_path = Path(settings.BASE_DIR) / "ICSLIS LOGO.png"
     if not logo_path.exists():
@@ -787,6 +819,7 @@ def instructor_sections(request):
         return redirect("front_page")
 
     _ensure_section_instructor_tables()
+    _reset_session_tokens(request, "instructor_sections")
     with connection.cursor() as cursor:
         if account_type == "coordinator":
             cursor.execute(
@@ -810,10 +843,16 @@ def instructor_sections(request):
                 """,
                 [account_id],
             )
-        assigned_sections = [
-            {"section_id": str(row[0]), "section": row[1], "school_year": row[2]}
-            for row in cursor.fetchall()
-        ]
+        assigned_sections = []
+        for row in cursor.fetchall():
+            section_id = str(row[0])
+            assigned_sections.append(
+                {
+                    "section_key": _mint_session_token(request, "instructor_sections", section_id),
+                    "section": row[1],
+                    "school_year": row[2],
+                }
+            )
 
     response = render(
         request,
@@ -876,6 +915,20 @@ def instructor_section_details(request, section_id):
 
 
 @never_cache
+def instructor_section_details_by_key(request):
+    account_id = request.session.get("account_id")
+    account_type = request.session.get("account_type")
+    if not account_id or account_type not in {"instructor", "coordinator"}:
+        return JsonResponse({"ok": False, "error": "Unauthorized"}, status=401)
+
+    section_key = (request.GET.get("section_key") or "").strip()
+    section_id = _resolve_session_token(request, "instructor_sections", section_key)
+    if not section_id:
+        return JsonResponse({"ok": False, "error": "Section session expired. Please refresh."}, status=400)
+    return instructor_section_details(request, section_id)
+
+
+@never_cache
 def manage_records(request):
     account_id = request.session.get("account_id")
     account_type = request.session.get("account_type")
@@ -921,6 +974,11 @@ def manage_records(request):
         where_sql = "where " + " and ".join(where_clauses)
 
     _ensure_section_instructor_tables()
+
+    _reset_session_tokens(request, "manage_records_students")
+    _reset_session_tokens(request, "manage_records_sections")
+    _reset_session_tokens(request, "manage_records_staff")
+    _reset_session_tokens(request, "weekly_journal_attendance")
 
     with connection.cursor() as cursor:
         # Keep schema backward-compatible for DBs that have not run the latest SQL yet.
@@ -987,6 +1045,10 @@ def manage_records(request):
         )
         columns = [col[0] for col in cursor.description]
         requirements = [dict(zip(columns, row)) for row in cursor.fetchall()]
+        for req in requirements:
+            req["student_key"] = _mint_session_token(
+                request, "manage_records_students", str(req["student_id"])
+            )
 
         cursor.execute(
             """
@@ -1042,7 +1104,9 @@ def manage_records(request):
 
             section_assignments.append(
                 {
-                    "section_id": row[0],
+                    "section_key": _mint_session_token(
+                        request, "manage_records_sections", str(row[0])
+                    ),
                     "section": row[1],
                     "school_year": row[2],
                     "instructor_id": row[3],
@@ -1060,20 +1124,32 @@ def manage_records(request):
             """
         )
         sections = [
-            {"id": row[0], "section": row[1], "school_year": row[2]}
+            {
+                "key": _mint_session_token(request, "manage_records_sections", str(row[0])),
+                "section": row[1],
+                "school_year": row[2],
+            }
             for row in cursor.fetchall()
         ]
 
-    instructors = (
+    instructors = list(
         PracticumInstructor.objects
         .filter(active_status=True)
         .order_by("last_name", "first_name")
     )
-    coordinators = (
+    for inst in instructors:
+        inst.staff_key = _mint_session_token(
+            request, "manage_records_staff", {"role": "inst", "id": str(inst.id)}
+        )
+    coordinators = list(
         PracticumCoordinator.objects
         .filter(active_status=True)
         .order_by("last_name", "first_name")
     )
+    for coord in coordinators:
+        coord.staff_key = _mint_session_token(
+            request, "manage_records_staff", {"role": "coord", "id": str(coord.id)}
+        )
     response = render(
         request,
         "staff/manage_records.html",
@@ -1113,18 +1189,19 @@ def section_instructors_view(request):
         request.session["flash_message_type"] = "error"
         return redirect("front_page")
 
-    section_id = (request.POST.get("section_id") or "").strip()
-    staff_val = (request.POST.get("instructor_id") or "").strip()
-    
+    section_key = (request.POST.get("section_key") or "").strip()
+    staff_key = (request.POST.get("staff_key") or "").strip()
+
+    section_id = _resolve_session_token(request, "manage_records_sections", section_key)
+    staff_data = _resolve_session_token(request, "manage_records_staff", staff_key) if staff_key else None
+
     instructor_id = None
     coordinator_id = None
-    
-    if staff_val.startswith("inst:"):
-        instructor_id = staff_val[5:]
-    elif staff_val.startswith("coord:"):
-        coordinator_id = staff_val[6:]
-    elif staff_val:
-        instructor_id = staff_val
+    if isinstance(staff_data, dict):
+        if staff_data.get("role") == "inst":
+            instructor_id = staff_data.get("id")
+        elif staff_data.get("role") == "coord":
+            coordinator_id = staff_data.get("id")
 
     if not section_id:
         if is_ajax:
@@ -1218,6 +1295,7 @@ def company_checklist(request):
         return redirect("front_page")
 
     _ensure_company_checklist_table()
+    _reset_session_tokens(request, "company_checklist_rows")
 
     response = render(
         request,
@@ -1283,9 +1361,9 @@ def _ensure_company_checklist_table():
         )
 
 
-def _serialize_company_checklist_row(row):
+def _serialize_company_checklist_row(request, row):
     return {
-        "id": str(row[0]),
+        "row_key": _mint_session_token(request, "company_checklist_rows", str(row[0])),
         "companyName": row[1] or "",
         "cityResolution": {
             "checked": bool(row[2]),
@@ -1346,6 +1424,7 @@ def company_checklist_data(request):
     _ensure_company_checklist_table()
 
     if request.method == "GET":
+        _reset_session_tokens(request, "company_checklist_rows")
         with connection.cursor() as cursor:
             cursor.execute(
                 """
@@ -1370,7 +1449,7 @@ def company_checklist_data(request):
         return JsonResponse(
             {
                 "ok": True,
-                "rows": [_serialize_company_checklist_row(row) for row in rows],
+                "rows": [_serialize_company_checklist_row(request, row) for row in rows],
             }
         )
 
@@ -1405,21 +1484,23 @@ def company_checklist_data(request):
                 """
             )
             row = cursor.fetchone()
-        return JsonResponse({"ok": True, "row": _serialize_company_checklist_row(row)})
+        return JsonResponse({"ok": True, "row": _serialize_company_checklist_row(request, row)})
 
     if action == "delete":
-        row_id = payload.get("row_id")
+        row_key = payload.get("row_key")
+        row_id = _resolve_session_token(request, "company_checklist_rows", row_key)
         if not row_id:
-            return JsonResponse({"ok": False, "message": "Missing row_id."}, status=400)
+            return JsonResponse({"ok": False, "message": "Missing or invalid row key."}, status=400)
         with connection.cursor() as cursor:
             cursor.execute("delete from company_checklist where id = %s", [row_id])
         return JsonResponse({"ok": True})
 
     if action == "update":
-        row_id = payload.get("row_id")
+        row_key = payload.get("row_key")
+        row_id = _resolve_session_token(request, "company_checklist_rows", row_key)
         row = payload.get("row") or {}
         if not row_id:
-            return JsonResponse({"ok": False, "message": "Missing row_id."}, status=400)
+            return JsonResponse({"ok": False, "message": "Missing or invalid row key."}, status=400)
 
         city = row.get("cityResolution") or {}
         signing = row.get("companySigning") or {}
@@ -1493,7 +1574,7 @@ def company_checklist_data(request):
             updated = cursor.fetchone()
         if not updated:
             return JsonResponse({"ok": False, "message": "Checklist row not found."}, status=404)
-        return JsonResponse({"ok": True, "row": _serialize_company_checklist_row(updated)})
+        return JsonResponse({"ok": True, "row": _serialize_company_checklist_row(request, updated)})
 
     return JsonResponse({"ok": False, "message": "Unknown action."}, status=400)
 
@@ -1577,7 +1658,8 @@ def weekly_journal_weeks(request):
         return JsonResponse({"ok": False, "message": "Unauthorized."}, status=401)
 
     section = (request.GET.get("section") or "").strip()
-    student_id = (request.GET.get("student_id") or "").strip()
+    student_key = (request.GET.get("student_key") or "").strip()
+    student_id = _resolve_session_token(request, "manage_records_students", student_key)
     month = request.GET.get("month")
     year = request.GET.get("year")
     if not section or not student_id or not month or not year:
@@ -1596,18 +1678,19 @@ def weekly_journal_weeks(request):
         )
         rows = cursor.fetchall()
 
-    weeks = [
-        {
-            "id": str(r[0]),
+    weeks = []
+    for r in rows:
+        weeks.append(
+            {
+                "key": _mint_session_token(request, "weekly_journal_attendance", str(r[0])),
             "week_no": r[1],
             "due_date": r[2].isoformat() if r[2] else None,
             "submitted_at": r[3].isoformat() if r[3] else None,
             "status": r[4],
             "submission_day": r[5],
             "status_note": r[6],
-        }
-        for r in rows
-    ]
+            }
+        )
     return JsonResponse({"ok": True, "weeks": weeks})
 
 
@@ -1621,7 +1704,8 @@ def update_weekly_journal_check(request):
     if not account_id or account_type not in {"coordinator", "instructor"}:
         return JsonResponse({"ok": False, "message": "Unauthorized."}, status=401)
 
-    attendance_id = request.POST.get("attendance_id")
+    attendance_key = request.POST.get("attendance_key")
+    attendance_id = _resolve_session_token(request, "weekly_journal_attendance", attendance_key)
     checked = request.POST.get("checked")
     if not attendance_id or checked is None:
         return JsonResponse({"ok": False, "message": "Missing parameters."}, status=400)
@@ -1696,7 +1780,8 @@ def update_student_requirement(request):
         request.session["flash_message_type"] = "error"
         return redirect("front_page")
 
-    student_id = request.POST.get("student_id")
+    student_key = request.POST.get("student_key")
+    student_id = _resolve_session_token(request, "manage_records_students", student_key)
     field = request.POST.get("field")
     value = request.POST.get("value")
 
@@ -1878,6 +1963,25 @@ def manage_accounts(request):
         request.session.pop("account_type", None)
         return redirect("front_page")
 
+    token_map = request.session.get("manage_accounts_edit_tokens")
+    if not isinstance(token_map, dict):
+        token_map = {}
+
+    def mint_edit_key(record_type, record_id):
+        key = secrets.token_urlsafe(16)
+        token_map[key] = {"type": record_type, "id": str(record_id)}
+        request.session["manage_accounts_edit_tokens"] = token_map
+        request.session.modified = True
+        return key
+
+    def resolve_edit_key(record_type, edit_key):
+        row = token_map.get((edit_key or "").strip())
+        if not row:
+            return None
+        if row.get("type") != record_type:
+            return None
+        return row.get("id")
+
     if request.method == "POST":
         action = request.POST.get("action")
         if action == "get_edit_modal":
@@ -1885,10 +1989,14 @@ def manage_accounts(request):
                 return JsonResponse({"ok": False, "message": "Invalid request."}, status=400)
 
             edit_type = (request.POST.get("edit_type") or "").strip().lower()
-            edit_id = (request.POST.get("edit_id") or "").strip()
+            edit_key = (request.POST.get("edit_key") or "").strip()
 
-            if edit_type not in {"student", "instructor"} or not edit_id:
+            if edit_type not in {"student", "instructor"} or not edit_key:
                 return JsonResponse({"ok": False, "message": "Invalid edit parameters."}, status=400)
+
+            edit_id = resolve_edit_key(edit_type, edit_key)
+            if not edit_id:
+                return JsonResponse({"ok": False, "message": "Edit session expired. Please refresh and try again."}, status=400)
 
             edit_record = None
             if edit_type == "student":
@@ -1901,7 +2009,7 @@ def manage_accounts(request):
 
             modal_html = render_to_string(
                 "staff/partials/manage_accounts_edit_modal.html",
-                {"edit_type": edit_type, "edit_record": edit_record},
+                {"edit_type": edit_type, "edit_record": edit_record, "edit_key": edit_key},
                 request=request,
             )
             return JsonResponse({"ok": True, "modal_html": modal_html})
@@ -2069,7 +2177,7 @@ def manage_accounts(request):
                         "mode": "add",
                         "type": "student",
                         "record": {
-                            "id": str(student.id),
+                            "edit_key": mint_edit_key("student", student.id),
                             "student_no": student.student_no,
                             "last_name": student.last_name,
                             "first_name": student.first_name,
@@ -2117,7 +2225,7 @@ def manage_accounts(request):
                         "mode": "add",
                         "type": "instructor",
                         "record": {
-                            "id": str(instructor.id),
+                            "edit_key": mint_edit_key("instructor", instructor.id),
                             "last_name": instructor.last_name,
                             "first_name": instructor.first_name,
                             "middle_initial": instructor.middle_initial,
@@ -2132,7 +2240,17 @@ def manage_accounts(request):
             return redirect("manage_accounts")
 
         if action == "update_student":
-            student_id = request.POST.get("id")
+            edit_key = (request.POST.get("edit_key") or "").strip()
+            student_id = resolve_edit_key("student", edit_key)
+            if not student_id:
+                if request.headers.get("x-requested-with") == "XMLHttpRequest":
+                    return JsonResponse(
+                        {"ok": False, "message": "Edit session expired. Please refresh and try again."},
+                        status=400,
+                    )
+                request.session["flash_message"] = "Edit session expired. Please refresh and try again."
+                request.session["flash_message_type"] = "error"
+                return redirect("manage_accounts")
             Student.objects.filter(id=student_id).update(
                 student_no=request.POST.get("student_no", "").strip(),
                 cca_email=request.POST.get("cca_email", "").strip(),
@@ -2152,7 +2270,7 @@ def manage_accounts(request):
                         "mode": "update",
                         "type": "student",
                         "record": {
-                            "id": str(student.id),
+                            "edit_key": edit_key,
                             "student_no": student.student_no,
                             "last_name": student.last_name,
                             "first_name": student.first_name,
@@ -2171,7 +2289,17 @@ def manage_accounts(request):
             return redirect("manage_accounts")
 
         if action == "update_instructor":
-            instructor_id = request.POST.get("id")
+            edit_key = (request.POST.get("edit_key") or "").strip()
+            instructor_id = resolve_edit_key("instructor", edit_key)
+            if not instructor_id:
+                if request.headers.get("x-requested-with") == "XMLHttpRequest":
+                    return JsonResponse(
+                        {"ok": False, "message": "Edit session expired. Please refresh and try again."},
+                        status=400,
+                    )
+                request.session["flash_message"] = "Edit session expired. Please refresh and try again."
+                request.session["flash_message_type"] = "error"
+                return redirect("manage_accounts")
             PracticumInstructor.objects.filter(id=instructor_id).update(
                 cca_email=request.POST.get("cca_email", "").strip(),
                 last_name=request.POST.get("last_name", "").strip(),
@@ -2187,7 +2315,7 @@ def manage_accounts(request):
                         "mode": "update",
                         "type": "instructor",
                         "record": {
-                            "id": str(instructor.id),
+                            "edit_key": edit_key,
                             "last_name": instructor.last_name,
                             "first_name": instructor.first_name,
                             "middle_initial": instructor.middle_initial,
@@ -2203,8 +2331,13 @@ def manage_accounts(request):
 
     message = request.session.pop("flash_message", None)
     message_type = request.session.pop("flash_message_type", None)
-    students = Student.objects.all().order_by("last_name", "first_name")
-    instructors = PracticumInstructor.objects.all().order_by("last_name", "first_name")
+    students = list(Student.objects.all().order_by("last_name", "first_name"))
+    instructors = list(PracticumInstructor.objects.all().order_by("last_name", "first_name"))
+    token_map = {}
+    for student in students:
+        student.edit_key = mint_edit_key("student", student.id)
+    for instructor in instructors:
+        instructor.edit_key = mint_edit_key("instructor", instructor.id)
     import_student_summary = request.session.pop("import_student_summary", None)
 
     response = render(

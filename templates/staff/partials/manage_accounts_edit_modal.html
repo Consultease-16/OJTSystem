@@ -5,7 +5,7 @@
       <form method="post" action="{% url 'manage_accounts' %}" data-ajax="true" id="edit_form" onsubmit="return handleAjaxSubmit(event, this)">
         {% csrf_token %}
         <input type="hidden" name="action" value="{% if edit_type == 'student' %}update_student{% else %}update_instructor{% endif %}" />
-        <input type="hidden" name="id" value="{{ edit_record.id }}" />
+        <input type="hidden" name="edit_key" value="{{ edit_key }}" />
         <div class="form-grid">
           {% if edit_type == 'student' %}
             <div class="form-group">

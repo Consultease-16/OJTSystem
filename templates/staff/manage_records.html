@@ -786,7 +786,7 @@
             <tbody id="requirements_tbody">
               {% if requirements %}
                 {% for req in requirements %}
-                <tr data-student-id="{{ req.student_id }}">
+                <tr data-student-key="{{ req.student_key }}">
                   <td>
                     {{ req.first_name }}
                     {% if req.second_name and req.second_name|lower != "none" and req.second_name|lower != "null" %}
@@ -801,7 +801,7 @@
                   <td>{{ req.section }}</td>
                   <td>{{ req.program }}</td>
                   <td>{{ req.school_year }}</td>
-                  <td class="ojt-status-cell" data-student-id="{{ req.student_id }}">
+                  <td class="ojt-status-cell" data-student-key="{{ req.student_key }}">
                     {% with jan=req.dtr_january_hours|default_if_none:0 %}
                     {% with feb=req.dtr_february_hours|default_if_none:0 %}
                     {% with mar=req.dtr_march_hours|default_if_none:0 %}
@@ -826,7 +826,7 @@
                   </td>
                   <td>
                     <button class="btn secondary view-requirements-btn" type="button" 
-                      data-student-id="{{ req.student_id }}"
+                      data-student-key="{{ req.student_key }}"
                       data-student-name="{{ req.first_name }}{% if req.second_name and req.second_name|lower != "none" and req.second_name|lower != "null" %} {{ req.second_name }}{% endif %}{% if req.middle_initial and req.middle_initial|lower != "none" and req.middle_initial|lower != "null" %} {{ req.middle_initial }}.{% endif %} {{ req.last_name }}"
                       data-student-section="{{ req.section }}"
                       data-reqs='{
@@ -885,20 +885,20 @@
           </div>
           <div class="field">
             <label for="assignment_section">Section</label>
-            <select id="assignment_section" name="section_id" required>
+            <select id="assignment_section" name="section_key" required>
               <option value="">Select Section</option>
               {% for item in sections %}
-                <option value="{{ item.id }}" data-school-year="{{ item.school_year }}">{{ item.section }}</option>
+                <option value="{{ item.key }}" data-school-year="{{ item.school_year }}">{{ item.section }}</option>
               {% endfor %}
             </select>
           </div>
           <div class="field">
             <label for="assignment_instructor">Practicum Instructor</label>
-            <select id="assignment_instructor" name="instructor_id">
+            <select id="assignment_instructor" name="staff_key">
               <option value="">Unassigned</option>
               <optgroup label="Instructors">
                 {% for inst in instructors %}
-                  <option value="inst:{{ inst.id }}">
+                  <option value="{{ inst.staff_key }}">
                     {{ inst.first_name }}
                     {% if inst.second_name and inst.second_name|lower != "none" and inst.second_name|lower != "null" %}
                       {{ inst.second_name }}
@@ -912,7 +912,7 @@
               </optgroup>
               <optgroup label="Coordinators">
                 {% for coord in coordinators %}
-                  <option value="coord:{{ coord.id }}">
+                  <option value="{{ coord.staff_key }}">
                     {{ coord.first_name }}
                     {% if coord.second_name and coord.second_name|lower != "none" and coord.second_name|lower != "null" %}
                       {{ coord.second_name }}
@@ -956,8 +956,8 @@
                   {% if row.instructor_name or row.coordinator_name %}
                     <form method="post" action="{% url 'section_instructors' %}" class="assignment-remove-form">
                       {% csrf_token %}
-                      <input type="hidden" name="section_id" value="{{ row.section_id }}" />
-                      <input type="hidden" name="instructor_id" value="" />
+                      <input type="hidden" name="section_key" value="{{ row.section_key }}" />
+                      <input type="hidden" name="staff_key" value="" />
                       <button type="submit" class="btn secondary">Remove</button>
                     </form>
                   {% else %}
@@ -1417,7 +1417,7 @@
 
     const saveStartOfOjt = async (studentId, dateValue) => {
       const payload = new URLSearchParams();
-      payload.append("student_id", studentId);
+      payload.append("student_key", studentId);
       payload.append("field", "start_of_ojt");
       payload.append("value", dateValue || "");
 
@@ -1435,7 +1435,7 @@
         showModalAlert(data?.message || "Failed to update Start of OJT.", "error");
         return null;
       }
-      const mainBtn = document.querySelector(`.view-requirements-btn[data-student-id="${studentId}"]`);
+      const mainBtn = document.querySelector(`.view-requirements-btn[data-student-key="${studentId}"]`);
       if (mainBtn) {
         const reqs = JSON.parse(mainBtn.dataset.reqs);
         reqs.start_of_ojt = data.value || "";
@@ -1480,7 +1480,7 @@
       const fields = Object.keys(payload);
       for (const field of fields) {
         const params = new URLSearchParams();
-        params.append("student_id", studentId);
+        params.append("student_key", studentId);
         params.append("field", field);
         params.append("value", String(payload[field]));
         const response = await fetch(updateUrl, {
@@ -1498,7 +1498,7 @@
           return false;
         }
       }
-      const mainBtn = document.querySelector(`.view-requirements-btn[data-student-id="${studentId}"]`);
+      const mainBtn = document.querySelector(`.view-requirements-btn[data-student-key="${studentId}"]`);
       if (mainBtn) {
         const reqs = JSON.parse(mainBtn.dataset.reqs);
         fields.forEach((field) => {
@@ -1527,7 +1527,7 @@
         <span>Start of OJT</span>
         <div style="display:flex; gap:8px; align-items:center;">
           <input type="date" class="start-ojt-input" value="${escapeHtml(reqs.start_of_ojt || '')}" style="padding:8px 10px; border:1px solid var(--line); border-radius:8px;" />
-          <button type="button" class="btn secondary start-ojt-save" data-student-id="${studentId}" data-current-date="${escapeHtml(reqs.start_of_ojt || '')}">Save</button>
+          <button type="button" class="btn secondary start-ojt-save" data-student-key="${studentId}" data-current-date="${escapeHtml(reqs.start_of_ojt || '')}">Save</button>
         </div>
       `;
       modalReqList.appendChild(startRow);
@@ -1544,7 +1544,7 @@
         row.innerHTML = `
           <span>${label}</span>
           <input type="checkbox" class="requirement-checkbox" 
-            data-student-id="${studentId}" 
+            data-student-key="${studentId}" 
             data-field="${key}" 
             ${isYes ? 'checked' : ''} 
             style="width: 20px; height: 20px; cursor: pointer; accent-color: var(--accent);" />
@@ -1628,7 +1628,7 @@
             `;
             item.addEventListener('click', () => {
               showRequirementsModal(
-                btn.dataset.studentId,
+                btn.dataset.studentKey,
                 btn.dataset.studentName,
                 btn.dataset.studentSection,
                 JSON.parse(btn.dataset.reqs),
@@ -1694,7 +1694,7 @@
 
     const updateOjtStatusCell = (studentId, reqs) => {
       if (!studentId || !reqs) return;
-      const cell = document.querySelector(`.ojt-status-cell[data-student-id="${studentId}"]`);
+      const cell = document.querySelector(`.ojt-status-cell[data-student-key="${studentId}"]`);
       if (!cell) return;
 
       const totalHours =
@@ -1728,11 +1728,11 @@
     };
 
     const updateCell = async (button) => {
-      const studentId = button.dataset.studentId;
+      const studentId = button.dataset.studentKey;
       const field = button.dataset.field;
       const value = button.dataset.value;
       const payload = new URLSearchParams();
-      payload.append("student_id", studentId);
+      payload.append("student_key", studentId);
       payload.append("field", field);
       payload.append("value", value);
 
@@ -1771,7 +1771,7 @@
       button.textContent = isYes ? "✕" : "✓";
 
       // Also update the data-reqs attribute in the main table so reopening modal shows correct state
-      const mainBtn = document.querySelector(`.view-requirements-btn[data-student-id="${studentId}"]`);
+      const mainBtn = document.querySelector(`.view-requirements-btn[data-student-key="${studentId}"]`);
       if (mainBtn) {
         const reqs = JSON.parse(mainBtn.dataset.reqs);
         reqs[field] = isYes;
@@ -1783,7 +1783,7 @@
     document.addEventListener("click", (event) => {
       const startSaveBtn = event.target.closest(".start-ojt-save");
       if (startSaveBtn) {
-        const studentId = startSaveBtn.dataset.studentId;
+        const studentId = startSaveBtn.dataset.studentKey;
         const input = startSaveBtn.closest(".checklist-item")?.querySelector(".start-ojt-input");
         const nextDate = input?.value || "";
         const currentDate = startSaveBtn.dataset.currentDate || "";
@@ -1818,7 +1818,7 @@
       
       const viewBtn = event.target.closest(".view-requirements-btn");
       if (viewBtn) {
-        const sid = viewBtn.dataset.studentId;
+        const sid = viewBtn.dataset.studentKey;
         const sname = viewBtn.dataset.studentName;
         const section = viewBtn.dataset.studentSection || '';
         const reqs = JSON.parse(viewBtn.dataset.reqs);
@@ -1831,12 +1831,12 @@
       const checkbox = event.target.closest(".requirement-checkbox");
       if (!checkbox) return;
 
-      const studentId = checkbox.dataset.studentId;
+      const studentId = checkbox.dataset.studentKey;
       const field = checkbox.dataset.field;
       const value = checkbox.checked ? "true" : "false";
 
       const payload = new URLSearchParams();
-      payload.append("student_id", studentId);
+      payload.append("student_key", studentId);
       payload.append("field", field);
       payload.append("value", value);
 
@@ -1858,7 +1858,7 @@
           return;
         }
 
-        const mainBtn = document.querySelector(`.view-requirements-btn[data-student-id="${studentId}"]`);
+        const mainBtn = document.querySelector(`.view-requirements-btn[data-student-key="${studentId}"]`);
         if (mainBtn) {
           const reqs = JSON.parse(mainBtn.dataset.reqs);
           reqs[field] = data.value === true;
@@ -2102,8 +2102,8 @@
       assignmentForm.addEventListener('submit', async (event) => {
         event.preventDefault();
         const formData = new FormData(assignmentForm);
-        const sectionId = (formData.get('section_id') || '').toString().trim();
-        const instructorId = (formData.get('instructor_id') || '').toString().trim();
+        const sectionId = (formData.get('section_key') || '').toString().trim();
+        const instructorId = (formData.get('staff_key') || '').toString().trim();
         if (!sectionId) {
           showAlert("Please select a section.", "error");
           return;
@@ -2422,7 +2422,7 @@
       const year = Number(attendanceYearModal?.value);
       const params = new URLSearchParams({
         section,
-        student_id: currentModalStudentId,
+        student_key: currentModalStudentId,
         month: month + 1,
         year,
       });
@@ -2478,7 +2478,7 @@
             <div class="week-status">
               ${statusText ? `<span class="status-pill ${statusClass}">${statusText}</span>` : ''}
               ${noteText ? `<span class="calendar-note" style="margin-left:8px;">${escapeHtml(noteText)}</span>` : ''}
-              <input type="checkbox" data-attendance-id="${week.id}" data-due-date="${week.due_date || ''}" ${week.submitted_at ? 'checked' : ''} ${disabledAttr} ${titleAttr} />
+              <input type="checkbox" data-attendance-key="${week.key}" data-due-date="${week.due_date || ''}" ${week.submitted_at ? 'checked' : ''} ${disabledAttr} ${titleAttr} />
             </div>
           `;
           attendanceWeeksModal.appendChild(row);
@@ -2605,7 +2605,7 @@
 
     if (attendanceWeeksModal) {
       attendanceWeeksModal.addEventListener('change', async (event) => {
-        const checkbox = event.target.closest('input[type="checkbox"][data-attendance-id]');
+        const checkbox = event.target.closest('input[type="checkbox"][data-attendance-key]');
         if (!checkbox) return;
         const dueDate = checkbox.dataset.dueDate ? new Date(checkbox.dataset.dueDate) : null;
         const today = new Date();
@@ -2634,7 +2634,7 @@
 
     const submitWeeklyJournalCheck = async (checkbox, statusOverride = "", statusNote = "") => {
         const payload = new URLSearchParams();
-        payload.append("attendance_id", checkbox.dataset.attendanceId);
+        payload.append("attendance_key", checkbox.dataset.attendanceKey);
         payload.append("checked", checkbox.checked ? "true" : "false");
         if (statusOverride) payload.append("status_override", statusOverride);
         if (statusNote) payload.append("status_note", statusNote);
