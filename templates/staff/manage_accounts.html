@@ -540,11 +540,7 @@
             </thead>
             <tbody id="students_tbody">
               {% for s in students %}
-              <tr data-student-row="1"
-                  data-edit-key="{{ s.edit_key }}"
-                  data-student-section="{{ s.section|default_if_none:'' }}"
-                  data-student-school-year="{{ s.school_year|default_if_none:'' }}"
-                  data-student-search="{{ s.student_no }} {{ s.cca_email }} {{ s.last_name }} {{ s.first_name }} {{ s.second_name|default_if_none:'' }} {{ s.middle_initial|default_if_none:'' }} {{ s.section }} {{ s.program }} {{ s.school_year|default_if_none:'' }}">
+              <tr data-student-row="1">
                 <td>{{ s.student_no }}</td>
                 <td>{{ s.first_name }}{% if s.second_name %} {{ s.second_name }}{% endif %}{% if s.middle_initial %} {{ s.middle_initial }}.{% endif %} {{ s.last_name }}</td>
                 <td>{{ s.section }}</td>
@@ -594,9 +590,7 @@
             </thead>
             <tbody id="instructors_tbody">
               {% for i in instructors %}
-              <tr data-instructor-row="1"
-                  data-edit-key="{{ i.edit_key }}"
-                  data-instructor-search="{{ i.cca_email }} {{ i.last_name }} {{ i.first_name }} {{ i.second_name|default_if_none:'' }} {{ i.middle_initial|default_if_none:'' }}">
+              <tr data-instructor-row="1">
                 <td>{{ i.first_name }}{% if i.second_name %} {{ i.second_name }}{% endif %}{% if i.middle_initial %} {{ i.middle_initial }}.{% endif %} {{ i.last_name }}</td>
                 <td>{{ i.cca_email }}</td>
                 <td>{{ i.active_status|yesno:"Active,Inactive" }}</td>
@@ -805,9 +799,9 @@
       let visibleCount = 0;
 
       rows.forEach((row) => {
-        const searchText = (row.dataset.studentSearch || '').toLowerCase();
-        const sectionText = (row.dataset.studentSection || '').toLowerCase();
-        const syText = (row.dataset.studentSchoolYear || '').toLowerCase();
+        const searchText = (row.textContent || '').toLowerCase();
+        const sectionText = (row.cells?.[2]?.textContent || '').trim().toLowerCase();
+        const syText = (row.cells?.[4]?.textContent || '').trim().toLowerCase();
         
         const matchesSearch = !query || searchText.includes(query);
         const matchesSection = !sectionValue || sectionText === sectionValue;
@@ -831,7 +825,7 @@
       if (sectionSelect) {
         const currentVal = sectionSelect.value;
         const sections = Array.from(document.querySelectorAll('#students_tbody tr[data-student-row]'))
-          .map((row) => (row.dataset.studentSection || '').trim())
+          .map((row) => (row.cells?.[2]?.textContent || '').trim())
           .filter((value) => value.length > 0);
         const uniqueSections = Array.from(new Set(sections)).sort((a, b) => a.localeCompare(b));
 
@@ -852,7 +846,7 @@
         
         // 1. Get years present in the table
         const tableYears = Array.from(document.querySelectorAll('#students_tbody tr[data-student-row]'))
-          .map((row) => (row.dataset.studentSchoolYear || '').trim())
+          .map((row) => (row.cells?.[4]?.textContent || '').trim())
           .filter((value) => value.length > 0);
 
         // 2. Generate standard range (Same logic as populateSchoolYears)
@@ -892,7 +886,7 @@
       let visibleCount = 0;
 
       rows.forEach((row) => {
-        const searchText = (row.dataset.instructorSearch || '').toLowerCase();
+        const searchText = (row.textContent || '').toLowerCase();
         const shouldShow = !query || searchText.includes(query);
         row.style.display = shouldShow ? '' : 'none';
         if (shouldShow) visibleCount += 1;
@@ -925,7 +919,8 @@
         if (tbody) {
           const secondName = data.record.second_name ? ` ${data.record.second_name}` : '';
           const mi = data.record.middle_initial ? ` ${data.record.middle_initial}.` : '';
-          const existing = document.querySelector(`tr[data-edit-key="${data.record.edit_key}"]`);
+          const existingBtn = document.querySelector(`#students_tbody .edit-account-btn[data-edit-key="${data.record.edit_key}"]`);
+          const existing = existingBtn ? existingBtn.closest('tr') : null;
           if (existing) {
             existing.innerHTML = `
               <td>${data.record.student_no}</td>
@@ -937,17 +932,9 @@
               <td>${data.record.active_status ? 'Active' : 'Inactive'}</td>
               <td><button class="btn secondary edit-account-btn" type="button" data-edit-type="student" data-edit-key="${data.record.edit_key}">Edit</button></td>
             `;
-            existing.dataset.editKey = data.record.edit_key;
-            existing.dataset.studentSection = data.record.section || '';
-            existing.dataset.studentSchoolYear = data.record.school_year || '';
-            existing.dataset.studentSearch = `${data.record.student_no} ${data.record.cca_email} ${data.record.last_name} ${data.record.first_name} ${data.record.second_name || ''} ${data.record.middle_initial || ''} ${data.record.section} ${data.record.program} ${data.record.school_year || ''}`;
           } else {
             const row = document.createElement('tr');
             row.setAttribute('data-student-row', '1');
-            row.setAttribute('data-edit-key', data.record.edit_key);
-            row.dataset.studentSection = data.record.section || '';
-            row.dataset.studentSchoolYear = data.record.school_year || '';
-            row.dataset.studentSearch = `${data.record.student_no} ${data.record.cca_email} ${data.record.last_name} ${data.record.first_name} ${data.record.second_name || ''} ${data.record.middle_initial || ''} ${data.record.section} ${data.record.program} ${data.record.school_year || ''}`;
             row.innerHTML = `
               <td>${data.record.student_no}</td>
               <td>${data.record.first_name}${secondName}${mi} ${data.record.last_name}</td>
@@ -972,7 +959,8 @@
         if (tbody) {
           const secondName = data.record.second_name ? ` ${data.record.second_name}` : '';
           const mi = data.record.middle_initial ? ` ${data.record.middle_initial}.` : '';
-          const existing = document.querySelector(`tr[data-edit-key="${data.record.edit_key}"]`);
+          const existingBtn = document.querySelector(`#instructors_tbody .edit-account-btn[data-edit-key="${data.record.edit_key}"]`);
+          const existing = existingBtn ? existingBtn.closest('tr') : null;
           if (existing) {
             existing.innerHTML = `
               <td>${data.record.first_name}${secondName}${mi} ${data.record.last_name}</td>
@@ -980,13 +968,9 @@
               <td>${data.record.active_status ? 'Active' : 'Inactive'}</td>
               <td><button class="btn secondary edit-account-btn" type="button" data-edit-type="instructor" data-edit-key="${data.record.edit_key}">Edit</button></td>
             `;
-            existing.dataset.editKey = data.record.edit_key;
-            existing.dataset.instructorSearch = `${data.record.cca_email} ${data.record.last_name} ${data.record.first_name} ${data.record.second_name || ''} ${data.record.middle_initial || ''}`;
           } else {
             const row = document.createElement('tr');
             row.setAttribute('data-instructor-row', '1');
-            row.setAttribute('data-edit-key', data.record.edit_key);
-            row.dataset.instructorSearch = `${data.record.cca_email} ${data.record.last_name} ${data.record.first_name} ${data.record.second_name || ''} ${data.record.middle_initial || ''}`;
             row.innerHTML = `
               <td>${data.record.first_name}${secondName}${mi} ${data.record.last_name}</td>
               <td>${data.record.cca_email}</td>
