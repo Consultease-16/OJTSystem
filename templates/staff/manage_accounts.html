@@ -540,7 +540,7 @@
             </thead>
             <tbody id="students_tbody">
               {% for s in students %}
-              <tr data-student-row="1">
+              <tr class="student-record-row">
                 <td>{{ s.student_no }}</td>
                 <td>{{ s.first_name }}{% if s.second_name %} {{ s.second_name }}{% endif %}{% if s.middle_initial %} {{ s.middle_initial }}.{% endif %} {{ s.last_name }}</td>
                 <td>{{ s.section }}</td>
@@ -590,7 +590,7 @@
             </thead>
             <tbody id="instructors_tbody">
               {% for i in instructors %}
-              <tr data-instructor-row="1">
+              <tr class="instructor-record-row">
                 <td>{{ i.first_name }}{% if i.second_name %} {{ i.second_name }}{% endif %}{% if i.middle_initial %} {{ i.middle_initial }}.{% endif %} {{ i.last_name }}</td>
                 <td>{{ i.cca_email }}</td>
                 <td>{{ i.active_status|yesno:"Active,Inactive" }}</td>
@@ -795,7 +795,7 @@
       const sectionValue = (sectionSelect?.value || '').trim().toLowerCase();
       const syValue = (sySelect?.value || '').trim().toLowerCase();
 
-      const rows = Array.from(document.querySelectorAll('#students_tbody tr[data-student-row]'));
+      const rows = Array.from(document.querySelectorAll('#students_tbody tr.student-record-row'));
       let visibleCount = 0;
 
       rows.forEach((row) => {
@@ -824,7 +824,7 @@
       const sectionSelect = document.getElementById('section_filter');
       if (sectionSelect) {
         const currentVal = sectionSelect.value;
-        const sections = Array.from(document.querySelectorAll('#students_tbody tr[data-student-row]'))
+        const sections = Array.from(document.querySelectorAll('#students_tbody tr.student-record-row'))
           .map((row) => (row.cells?.[2]?.textContent || '').trim())
           .filter((value) => value.length > 0);
         const uniqueSections = Array.from(new Set(sections)).sort((a, b) => a.localeCompare(b));
@@ -845,7 +845,7 @@
         const currentVal = sySelect.value;
         
         // 1. Get years present in the table
-        const tableYears = Array.from(document.querySelectorAll('#students_tbody tr[data-student-row]'))
+        const tableYears = Array.from(document.querySelectorAll('#students_tbody tr.student-record-row'))
           .map((row) => (row.cells?.[4]?.textContent || '').trim())
           .filter((value) => value.length > 0);
 
@@ -882,7 +882,7 @@
     const applyInstructorFilter = () => {
       const searchInput = document.getElementById('instructor_search');
       const query = (searchInput?.value || '').trim().toLowerCase();
-      const rows = Array.from(document.querySelectorAll('#instructors_tbody tr[data-instructor-row]'));
+      const rows = Array.from(document.querySelectorAll('#instructors_tbody tr.instructor-record-row'));
       let visibleCount = 0;
 
       rows.forEach((row) => {
@@ -934,7 +934,7 @@
             `;
           } else {
             const row = document.createElement('tr');
-            row.setAttribute('data-student-row', '1');
+            row.className = 'student-record-row';
             row.innerHTML = `
               <td>${data.record.student_no}</td>
               <td>${data.record.first_name}${secondName}${mi} ${data.record.last_name}</td>
@@ -970,7 +970,7 @@
             `;
           } else {
             const row = document.createElement('tr');
-            row.setAttribute('data-instructor-row', '1');
+            row.className = 'instructor-record-row';
             row.innerHTML = `
               <td>${data.record.first_name}${secondName}${mi} ${data.record.last_name}</td>
               <td>${data.record.cca_email}</td>
