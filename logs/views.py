@@ -555,7 +555,6 @@ def staff_home(request):
                 full_name_parts.append(row[5])
                 instructor_students.append(
                     {
-                        "student_id": row[0],
                         "student_no": row[1],
                         "name": " ".join(part for part in full_name_parts if part),
                         "section": row[6],
@@ -669,7 +668,7 @@ def _build_instructor_section_detail(cursor, section, school_year):
 
         students.append(
             {
-                "student_id": str(student_row[0]),
+                "_sid": str(student_row[0]),
                 "student_no": student_row[1],
                 "name": full_name,
                 "program": student_row[6],
@@ -775,7 +774,7 @@ def _build_instructor_section_detail(cursor, section, school_year):
 
         # 3. Build rows matching the 'students' list order
         for s in students:
-            s_id = s["student_id"]
+            s_id = s["_sid"]
             row_cells = []
             s_data = student_entries.get(s_id, {})
             
@@ -791,6 +790,9 @@ def _build_instructor_section_detail(cursor, section, school_year):
                 "name": s["name"],
                 "cells": row_cells
             })
+
+    for s in students:
+        s.pop("_sid", None)
 
     return {
         "section": section,

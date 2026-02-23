@@ -591,7 +591,7 @@
       return "";
     };
 
-    const stageCell = (rowId, key, label, stage, withStatus = false, isDisabled = false) => {
+    const stageCell = (rowKey, key, label, stage, withStatus = false, isDisabled = false) => {
       const statusValue = withStatus ? (stage.approval || "") : "";
       const selectClass = withStatus ? `status-select ${statusClass(statusValue)}` : "";
       const returned = withStatus && statusValue === "approved" ? `
@@ -601,7 +601,7 @@
         </div>
       ` : "";
       const statusControl = withStatus ? `
-        <select class="${selectClass}" data-row-id="${rowId}" data-stage="${key}" data-field="approval" ${!isDisabled && stage.checked ? "" : "disabled"}>
+        <select class="${selectClass}" data-row-key="${rowKey}" data-stage="${key}" data-field="approval" ${!isDisabled && stage.checked ? "" : "disabled"}>
           <option value="pending" ${(statusValue === "" || statusValue === "pending") ? "selected" : ""}>Pending</option>
           <option value="approved" ${statusValue === "approved" ? "selected" : ""}>Approved</option>
         </select>
@@ -611,7 +611,7 @@
       return `
         <div class="stage-cell" ${isDisabled ? 'style="opacity: 0.6;"' : ''}>
           <div class="stage-top">
-            <input type="checkbox" data-row-id="${rowId}" data-stage="${key}" data-field="checked" ${stage.checked ? "checked" : ""} ${isDisabled ? "disabled" : ""} />
+            <input type="checkbox" data-row-key="${rowKey}" data-stage="${key}" data-field="checked" ${stage.checked ? "checked" : ""} ${isDisabled ? "disabled" : ""} />
             <span>${label}</span>
           </div>
           <div class="meta-row">
@@ -650,7 +650,7 @@
               type="text"
               placeholder="Enter company name"
               value="${(row.companyName || "").replace(/"/g, "&quot;")}"
-              data-row-id="${row.rowKey}"
+              data-row-key="${row.rowKey}"
               data-field="companyName"
             />
           </td>
@@ -659,14 +659,14 @@
           <td>${stageCell(row.rowKey, "officePresident", "Check", row.officePresident, false, officePresDisabled)}</td>
           <td>${stageCell(row.rowKey, "processedNotarized", "Check", row.processedNotarized, false, processedDisabled)}</td>
           <td class="row-actions">
-            <button class="btn-link" type="button" data-action="delete-row" data-row-id="${row.rowKey}">Delete</button>
+            <button class="btn-link" type="button" data-action="delete-row" data-row-key="${row.rowKey}">Delete</button>
           </td>
         `;
         checklistBody.appendChild(tr);
       });
     };
 
-    const getRow = (rowId) => rows.find((r) => r.rowKey === rowId);
+    const getRow = (rowKey) => rows.find((r) => r.rowKey === rowKey);
 
     const reloadRows = async () => {
       const data = await requestJson("GET");
@@ -706,9 +706,9 @@
     });
 
     checklistBody.addEventListener("change", async (event) => {
-      const input = event.target.closest('input[type="text"][data-row-id][data-field="companyName"]');
+      const input = event.target.closest('input[type="text"][data-row-key][data-field="companyName"]');
       if (!input) return;
-      const row = getRow(input.dataset.rowId);
+      const row = getRow(input.dataset.rowKey);
       if (!row) return;
       row.companyName = input.value;
       try {
@@ -720,9 +720,9 @@
     });
 
     checklistBody.addEventListener("change", async (event) => {
-      const checkbox = event.target.closest('input[type="checkbox"][data-stage][data-row-id]');
+      const checkbox = event.target.closest('input[type="checkbox"][data-stage][data-row-key]');
       if (checkbox) {
-        const row = getRow(checkbox.dataset.rowId);
+        const row = getRow(checkbox.dataset.rowKey);
         if (!row) return;
         const stage = row[checkbox.dataset.stage];
         if (!stage) return;
@@ -730,7 +730,7 @@
         if (!checkbox.checked && stage.checked) {
           checkbox.checked = true;
           openUncheckModal({
-            rowId: checkbox.dataset.rowId,
+            rowId: checkbox.dataset.rowKey,
             stageKey: checkbox.dataset.stage,
           });
           return;
@@ -759,9 +759,9 @@
         return;
       }
 
-      const status = event.target.closest('select[data-stage][data-row-id][data-field="approval"]');
+      const status = event.target.closest('select[data-stage][data-row-key][data-field="approval"]');
       if (status) {
-        const row = getRow(status.dataset.rowId);
+        const row = getRow(status.dataset.rowKey);
         if (!row) return;
         const stage = row[status.dataset.stage];
         if (!stage || !stage.checked) return;
@@ -781,7 +781,7 @@
     checklistBody.addEventListener("click", async (event) => {
       const del = event.target.closest('button[data-action="delete-row"]');
       if (!del) return;
-      openDeleteModal(del.dataset.rowId);
+      openDeleteModal(del.dataset.rowKey);
     });
 
     uncheckCancelBtn?.addEventListener("click", () => {
