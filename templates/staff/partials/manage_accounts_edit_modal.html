@@ -1,0 +1,86 @@
+<div class="modal-backdrop active" id="edit_modal">
+  <div class="modal">
+    <section class="panel">
+      <h2>Edit {{ edit_type|title }}</h2>
+      <form method="post" action="{% url 'manage_accounts' %}" data-ajax="true" id="edit_form" onsubmit="return handleAjaxSubmit(event, this)">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="{% if edit_type == 'student' %}update_student{% else %}update_instructor{% endif %}" />
+        <input type="hidden" name="id" value="{{ edit_record.id }}" />
+        <div class="form-grid">
+          {% if edit_type == 'student' %}
+            <div class="form-group">
+              <label>Student No.</label>
+              <input name="student_no" value="{{ edit_record.student_no }}" placeholder="12-3456" required />
+            </div>
+            <div class="form-group">
+              <label>Email</label>
+              <input name="cca_email" type="email" value="{{ edit_record.cca_email }}" placeholder="Email" required />
+            </div>
+            <div class="form-group">
+              <label>Last Name</label>
+              <input name="last_name" value="{{ edit_record.last_name }}" placeholder="Last Name" required />
+            </div>
+            <div class="form-group">
+              <label>First Name</label>
+              <input name="first_name" value="{{ edit_record.first_name }}" placeholder="First Name" required />
+            </div>
+            <div class="form-group">
+              <label>Second Name</label>
+              <input name="second_name" value="{{ edit_record.second_name|default_if_none:'' }}" placeholder="Second Name (optional)" />
+            </div>
+            <div class="form-group">
+              <label>Middle Initial</label>
+              <input name="middle_initial" value="{{ edit_record.middle_initial|default_if_none:'' }}" placeholder="Middle Initial" />
+            </div>
+            <div class="form-group">
+              <label>Section</label>
+              <input name="section" value="{{ edit_record.section }}" placeholder="Section" required />
+            </div>
+            <div class="form-group">
+              <label>Program</label>
+              <select name="program" required>
+                <option value="Bachelor of Libary and Information Science" {% if edit_record.program == "Bachelor of Libary and Information Science" %}selected{% endif %}>Bachelor of Libary and Information Science</option>
+                <option value="Bachelor of Science in Information Systems" {% if edit_record.program == "Bachelor of Science in Information Systems" %}selected{% endif %}>Bachelor of Science in Information Systems</option>
+                <option value="Bachelor of Science in Computer Science" {% if edit_record.program == "Bachelor of Science in Computer Science" %}selected{% endif %}>Bachelor of Science in Computer Science</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>School Year</label>
+              <select name="school_year" id="edit_school_year">
+                <option value="">Select School Year</option>
+                {% if edit_record.school_year %}
+                  <option value="{{ edit_record.school_year }}" selected>{{ edit_record.school_year }}</option>
+                {% endif %}
+              </select>
+            </div>
+          {% else %}
+            <div class="form-group">
+              <label>Email</label>
+              <input name="cca_email" type="email" value="{{ edit_record.cca_email }}" placeholder="Email" required />
+            </div>
+            <div class="form-group">
+              <label>Last Name</label>
+              <input name="last_name" value="{{ edit_record.last_name }}" placeholder="Last Name" required />
+            </div>
+            <div class="form-group">
+              <label>First Name</label>
+              <input name="first_name" value="{{ edit_record.first_name }}" placeholder="First Name" required />
+            </div>
+            <div class="form-group">
+              <label>Second Name</label>
+              <input name="second_name" value="{{ edit_record.second_name|default_if_none:'' }}" placeholder="Second Name (optional)" />
+            </div>
+            <div class="form-group">
+              <label>Middle Initial</label>
+              <input name="middle_initial" value="{{ edit_record.middle_initial|default_if_none:'' }}" placeholder="Middle Initial" />
+            </div>
+          {% endif %}
+        </div>
+        <div class="form-actions">
+          <button class="btn secondary" type="button" id="close_edit_modal">Cancel</button>
+          <button class="btn" type="button" id="save_edit_btn">Save Changes</button>
+        </div>
+      </form>
+    </section>
+  </div>
+</div>

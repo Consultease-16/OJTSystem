@@ -552,7 +552,14 @@
                 <td>{{ s.cca_email }}</td>
                 <td>{{ s.active_status|yesno:"Active,Inactive" }}</td>
                 <td>
-                  <a class="btn secondary" href="?edit_type=student&edit_id={{ s.id }}">Edit</a>
+                  <button
+                    class="btn secondary edit-account-btn"
+                    type="button"
+                    data-edit-type="student"
+                    data-edit-id="{{ s.id }}"
+                  >
+                    Edit
+                  </button>
                 </td>
               </tr>
               {% empty %}
@@ -591,7 +598,16 @@
                 <td>{{ i.first_name }}{% if i.second_name %} {{ i.second_name }}{% endif %}{% if i.middle_initial %} {{ i.middle_initial }}.{% endif %} {{ i.last_name }}</td>
                 <td>{{ i.cca_email }}</td>
                 <td>{{ i.active_status|yesno:"Active,Inactive" }}</td>
-                <td><a class="btn secondary" href="?edit_type=instructor&edit_id={{ i.id }}">Edit</a></td>
+                <td>
+                  <button
+                    class="btn secondary edit-account-btn"
+                    type="button"
+                    data-edit-type="instructor"
+                    data-edit-id="{{ i.id }}"
+                  >
+                    Edit
+                  </button>
+                </td>
               </tr>
               {% empty %}
               <tr class="instructors-empty"><td colspan="4">No instructors found.</td></tr>
@@ -604,94 +620,7 @@
         </div>
       </section>
 
-      {% if edit_type and edit_record %}
-      <div class="modal-backdrop active" id="edit_modal">
-        <div class="modal">
-          <section class="panel">
-            <h2>Edit {{ edit_type|title }}</h2>
-            <form method="post" action="{% url 'manage_accounts' %}" data-ajax="true" id="edit_form" onsubmit="return handleAjaxSubmit(event, this)">
-              {% csrf_token %}
-              <input type="hidden" name="action" value="{% if edit_type == 'student' %}update_student{% else %}update_instructor{% endif %}" />
-              <input type="hidden" name="id" value="{{ edit_record.id }}" />
-              <div class="form-grid">
-                {% if edit_type == 'student' %}
-                  <div class="form-group">
-                    <label>Student No.</label>
-                    <input name="student_no" value="{{ edit_record.student_no }}" placeholder="12-3456" required />
-                  </div>
-                  <div class="form-group">
-                    <label>Email</label>
-                    <input name="cca_email" type="email" value="{{ edit_record.cca_email }}" placeholder="Email" required />
-                  </div>
-                  <div class="form-group">
-                    <label>Last Name</label>
-                    <input name="last_name" value="{{ edit_record.last_name }}" placeholder="Last Name" required />
-                  </div>
-                  <div class="form-group">
-                    <label>First Name</label>
-                    <input name="first_name" value="{{ edit_record.first_name }}" placeholder="First Name" required />
-                  </div>
-                  <div class="form-group">
-                    <label>Second Name</label>
-                    <input name="second_name" value="{{ edit_record.second_name|default_if_none:'' }}" placeholder="Second Name (optional)" />
-                  </div>
-                  <div class="form-group">
-                    <label>Middle Initial</label>
-                    <input name="middle_initial" value="{{ edit_record.middle_initial|default_if_none:'' }}" placeholder="Middle Initial" />
-                  </div>
-                  <div class="form-group">
-                    <label>Section</label>
-                    <input name="section" value="{{ edit_record.section }}" placeholder="Section" required />
-                  </div>
-                  <div class="form-group">
-                    <label>Program</label>
-                    <select name="program" required>
-                      <option value="Bachelor of Libary and Information Science" {% if edit_record.program == "Bachelor of Libary and Information Science" %}selected{% endif %}>Bachelor of Libary and Information Science</option>
-                      <option value="Bachelor of Science in Information Systems" {% if edit_record.program == "Bachelor of Science in Information Systems" %}selected{% endif %}>Bachelor of Science in Information Systems</option>
-                      <option value="Bachelor of Science in Computer Science" {% if edit_record.program == "Bachelor of Science in Computer Science" %}selected{% endif %}>Bachelor of Science in Computer Science</option>
-                    </select>
-                  </div>
-                  <div class="form-group">
-                    <label>School Year</label>
-                    <select name="school_year" id="edit_school_year">
-                      <option value="">Select School Year</option>
-                      {% if edit_record.school_year %}
-                      <option value="{{ edit_record.school_year }}" selected>{{ edit_record.school_year }}</option>
-                      {% endif %}
-                    </select>
-                  </div>
-                {% else %}
-                  <div class="form-group">
-                    <label>Email</label>
-                    <input name="cca_email" type="email" value="{{ edit_record.cca_email }}" placeholder="Email" required />
-                  </div>
-                  <div class="form-group">
-                    <label>Last Name</label>
-                    <input name="last_name" value="{{ edit_record.last_name }}" placeholder="Last Name" required />
-                  </div>
-                  <div class="form-group">
-                    <label>First Name</label>
-                    <input name="first_name" value="{{ edit_record.first_name }}" placeholder="First Name" required />
-                  </div>
-                  <div class="form-group">
-                    <label>Second Name</label>
-                    <input name="second_name" value="{{ edit_record.second_name|default_if_none:'' }}" placeholder="Second Name (optional)" />
-                  </div>
-                  <div class="form-group">
-                    <label>Middle Initial</label>
-                    <input name="middle_initial" value="{{ edit_record.middle_initial|default_if_none:'' }}" placeholder="Middle Initial" />
-                  </div>
-                {% endif %}
-              </div>
-          <div class="form-actions">
-            <button class="btn secondary" type="button" id="close_edit_modal">Cancel</button>
-            <button class="btn" type="button" id="save_edit_btn">Save Changes</button>
-          </div>
-        </form>
-      </section>
-    </div>
-  </div>
-      {% endif %}
+      <div id="edit_modal_container"></div>
     </main>
   </div>
   {% if message and message_type == "error" %}
@@ -859,10 +788,6 @@
         modal.remove();
       }
       document.body.classList.remove('no-scroll');
-      const url = new URL(window.location.href);
-      url.searchParams.delete('edit_type');
-      url.searchParams.delete('edit_id');
-      window.history.replaceState({}, '', url.toString());
     };
 
     const applyStudentFilters = () => {
@@ -1008,7 +933,7 @@
               <td>${data.record.school_year || ''}</td>
               <td>${data.record.cca_email}</td>
               <td>${data.record.active_status ? 'Active' : 'Inactive'}</td>
-              <td><a class="btn secondary" href="?edit_type=student&edit_id=${data.record.id}">Edit</a></td>
+              <td><button class="btn secondary edit-account-btn" type="button" data-edit-type="student" data-edit-id="${data.record.id}">Edit</button></td>
             `;
             existing.dataset.studentSection = data.record.section || '';
             existing.dataset.studentSchoolYear = data.record.school_year || '';
@@ -1027,7 +952,7 @@
               <td>${data.record.school_year || ''}</td>
               <td>${data.record.cca_email}</td>
               <td>${data.record.active_status ? 'Active' : 'Inactive'}</td>
-              <td><a class="btn secondary" href="?edit_type=student&edit_id=${data.record.id}">Edit</a></td>
+              <td><button class="btn secondary edit-account-btn" type="button" data-edit-type="student" data-edit-id="${data.record.id}">Edit</button></td>
             `;
             tbody.prepend(row);
           }
@@ -1049,7 +974,7 @@
               <td>${data.record.first_name}${secondName}${mi} ${data.record.last_name}</td>
               <td>${data.record.cca_email}</td>
               <td>${data.record.active_status ? 'Active' : 'Inactive'}</td>
-              <td><a class="btn secondary" href="?edit_type=instructor&edit_id=${data.record.id}">Edit</a></td>
+              <td><button class="btn secondary edit-account-btn" type="button" data-edit-type="instructor" data-edit-id="${data.record.id}">Edit</button></td>
             `;
             existing.dataset.instructorSearch = `${data.record.cca_email} ${data.record.last_name} ${data.record.first_name} ${data.record.second_name || ''} ${data.record.middle_initial || ''}`;
           } else {
@@ -1060,7 +985,7 @@
               <td>${data.record.first_name}${secondName}${mi} ${data.record.last_name}</td>
               <td>${data.record.cca_email}</td>
               <td>${data.record.active_status ? 'Active' : 'Inactive'}</td>
-              <td><a class="btn secondary" href="?edit_type=instructor&edit_id=${data.record.id}">Edit</a></td>
+              <td><button class="btn secondary edit-account-btn" type="button" data-edit-type="instructor" data-edit-id="${data.record.id}">Edit</button></td>
             `;
             tbody.prepend(row);
           }
@@ -1145,29 +1070,37 @@
       }
     };
 
-    const loadEditModal = async (url) => {
-      const response = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
-      if (!response.ok) return;
-      const html = await response.text();
+    const loadEditModal = async (editType, editId) => {
+      if (!editType || !editId) return;
+      const payload = new URLSearchParams();
+      payload.append('action', 'get_edit_modal');
+      payload.append('edit_type', editType);
+      payload.append('edit_id', editId);
+      const response = await fetch(window.location.href, {
+        method: 'POST',
+        headers: {
+          'X-Requested-With': 'XMLHttpRequest',
+          'X-CSRFToken': csrfToken,
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: payload.toString(),
+      });
+      const data = await response.json().catch(() => null);
+      if (!response.ok || !data || !data.ok || !data.modal_html) {
+        showAlert(data?.message || 'Unable to open edit form.', 'error');
+        return;
+      }
       const temp = document.createElement('div');
-      temp.innerHTML = html;
+      temp.innerHTML = data.modal_html;
       const newModal = temp.querySelector('#edit_modal');
       if (!newModal) return;
       const existing = document.getElementById('edit_modal');
       if (existing) {
         existing.remove();
       }
-      document.body.appendChild(newModal);
+      const modalContainer = document.getElementById('edit_modal_container') || document.body;
+      modalContainer.appendChild(newModal);
       document.body.classList.add('no-scroll');
-      const incoming = new URL(url, window.location.origin);
-      const newUrl = new URL(window.location.href);
-      const editType = incoming.searchParams.get('edit_type') || '';
-      const editId = incoming.searchParams.get('edit_id') || '';
-      if (editType && editId) {
-        newUrl.searchParams.set('edit_type', editType);
-        newUrl.searchParams.set('edit_id', editId);
-      }
-      window.history.replaceState({}, '', newUrl.toString());
       bindEditModal();
     };
 
@@ -1192,10 +1125,10 @@
     applyInstructorFilter();
     bindEditModal();
     document.addEventListener('click', (event) => {
-      const editLink = event.target.closest('a.btn.secondary[href*="edit_type="]');
-      if (!editLink) return;
+      const editBtn = event.target.closest('.edit-account-btn');
+      if (!editBtn) return;
       event.preventDefault();
-      loadEditModal(editLink.getAttribute('href'));
+      loadEditModal(editBtn.dataset.editType, editBtn.dataset.editId);
     });
   </script>
 </body>

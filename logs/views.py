@@ -1880,6 +1880,32 @@ def manage_accounts(request):
 
     if request.method == "POST":
         action = request.POST.get("action")
+        if action == "get_edit_modal":
+            if request.headers.get("x-requested-with") != "XMLHttpRequest":
+                return JsonResponse({"ok": False, "message": "Invalid request."}, status=400)
+
+            edit_type = (request.POST.get("edit_type") or "").strip().lower()
+            edit_id = (request.POST.get("edit_id") or "").strip()
+
+            if edit_type not in {"student", "instructor"} or not edit_id:
+                return JsonResponse({"ok": False, "message": "Invalid edit parameters."}, status=400)
+
+            edit_record = None
+            if edit_type == "student":
+                edit_record = Student.objects.filter(id=edit_id).first()
+            elif edit_type == "instructor":
+                edit_record = PracticumInstructor.objects.filter(id=edit_id).first()
+
+            if not edit_record:
+                return JsonResponse({"ok": False, "message": "Record not found."}, status=404)
+
+            modal_html = render_to_string(
+                "staff/partials/manage_accounts_edit_modal.html",
+                {"edit_type": edit_type, "edit_record": edit_record},
+                request=request,
+            )
+            return JsonResponse({"ok": True, "modal_html": modal_html})
+
         if action == "import_student_csv":
             upload = request.FILES.get("student_csv")
             if not upload:
@@ -2179,14 +2205,7 @@ def manage_accounts(request):
     message_type = request.session.pop("flash_message_type", None)
     students = Student.objects.all().order_by("last_name", "first_name")
     instructors = PracticumInstructor.objects.all().order_by("last_name", "first_name")
-    edit_type = request.GET.get("edit_type")
-    edit_id = request.GET.get("edit_id")
     import_student_summary = request.session.pop("import_student_summary", None)
-    edit_record = None
-    if edit_type == "student" and edit_id:
-        edit_record = Student.objects.filter(id=edit_id).first()
-    if edit_type == "instructor" and edit_id:
-        edit_record = PracticumInstructor.objects.filter(id=edit_id).first()
 
     response = render(
         request,
@@ -2198,8 +2217,6 @@ def manage_accounts(request):
             "message_type": message_type,
             "students": students,
             "instructors": instructors,
-            "edit_type": edit_type,
-            "edit_record": edit_record,
             "import_student_summary": import_student_summary,
         },
     )
