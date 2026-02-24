@@ -1025,6 +1025,7 @@
         </form>
         <div class="form-actions" style="justify-content: flex-start; margin-top: 12px;">
           <button class="btn secondary" type="button" id="delete_selected_schedules" style="display: none;">Delete Selected</button>
+          <button class="btn secondary" type="button" id="clear_selected_schedules" style="display: none;">Cancel Selection</button>
         </div>
         <div class="table-wrap">
           <table>
@@ -2154,6 +2155,7 @@
     const scheduleSectionInput = document.getElementById('schedule_section');
     const scheduleDaySelect = document.getElementById('schedule_day');
     const deleteSelectedBtn = document.getElementById('delete_selected_schedules');
+    const clearSelectedBtn = document.getElementById('clear_selected_schedules');
     const scheduleSelectAll = document.getElementById('schedule_select_all');
     const scheduleActionLoading = document.getElementById('schedule_action_loading');
     const scheduleActionLoadingText = document.getElementById('schedule_action_loading_text');
@@ -2240,7 +2242,11 @@
       const nextBody = doc.getElementById("assignment_list_body");
       if (nextBody) {
         assignmentListBody.innerHTML = nextBody.innerHTML;
-        filterAssignmentRowsByYear(assignmentSchoolYear?.value || "");
+        if (assignmentSchoolYear) {
+          assignmentSchoolYear.dispatchEvent(new Event('change'));
+        } else {
+          filterAssignmentRowsByYear("");
+        }
       }
     };
 
@@ -2255,11 +2261,40 @@
         assignmentSchoolYear.appendChild(option);
       });
 
+      const updateAssignmentSectionLocks = () => {
+        if (!assignmentListBody) return;
+        const assignedSectionYear = new Set();
+        Array.from(assignmentListBody.querySelectorAll('tr')).forEach((row) => {
+          if (!row.querySelector('.assignment-remove-form')) return;
+          const sectionText = (row.children?.[0]?.textContent || '').trim();
+          const yearText = (row.children?.[1]?.textContent || '').trim();
+          if (!sectionText || !yearText) return;
+          assignedSectionYear.add(`${sectionText}||${yearText}`);
+        });
+
+        sectionOptions.forEach((opt) => {
+          const sectionText = (opt.textContent || '').trim();
+          const yearText = (opt.dataset.schoolYear || '').trim();
+          const isAssigned = assignedSectionYear.has(`${sectionText}||${yearText}`);
+          opt.disabled = isAssigned;
+          opt.style.textDecoration = isAssigned ? 'line-through' : '';
+          opt.style.color = isAssigned ? '#8b97a8' : '';
+        });
+
+        const selectedOption = Array.from(assignmentSection.options).find(
+          (opt) => opt.value === assignmentSection.value
+        );
+        if (selectedOption && selectedOption.disabled) {
+          assignmentSection.value = '';
+        }
+      };
+
       const filterSections = (year) => {
         const hasYear = Boolean(year);
         sectionOptions.forEach((opt) => {
           opt.hidden = !hasYear || opt.dataset.schoolYear !== year;
         });
+        updateAssignmentSectionLocks();
         assignmentSection.value = '';
         assignmentSection.disabled = !hasYear;
       };
@@ -2272,6 +2307,7 @@
 
       filterSections(assignmentSchoolYear.value);
       filterAssignmentRowsByYear(assignmentSchoolYear.value);
+      updateAssignmentSectionLocks();
     }
 
     if (assignmentForm) {
@@ -2537,9 +2573,14 @@
     });
 
     const updateDeleteSelectedVisibility = () => {
-      if (!deleteSelectedBtn || !scheduleList) return;
+      if (!scheduleList) return;
       const selected = scheduleList.querySelectorAll('.schedule-select:checked').length;
-      deleteSelectedBtn.style.display = selected > 0 ? 'inline-flex' : 'none';
+      if (deleteSelectedBtn) {
+        deleteSelectedBtn.style.display = selected > 0 ? 'inline-flex' : 'none';
+      }
+      if (clearSelectedBtn) {
+        clearSelectedBtn.style.display = selected > 0 ? 'inline-flex' : 'none';
+      }
     };
 
     const getSelectedScheduleYear = () => (scheduleSchoolYearInput?.value || '').trim();
@@ -2551,9 +2592,19 @@
       );
     };
 
+    const refreshScheduleSectionOptionMarks = () => {
+      scheduleSectionOptions.forEach((opt) => {
+        const hasSchedule = submissionSchedules.some((item) => item.section === opt.value);
+        opt.style.textDecoration = hasSchedule ? 'line-through' : '';
+        opt.style.color = hasSchedule ? '#8b97a8' : '';
+        opt.disabled = hasSchedule;
+      });
+    };
+
     const applyScheduleSectionFilter = () => {
       if (!scheduleSchoolYearInput || !scheduleSectionInput) return;
       const selectedYear = getSelectedScheduleYear();
+      refreshScheduleSectionOptionMarks();
       scheduleSectionOptions.forEach((opt) => {
         opt.hidden = !selectedYear || opt.dataset.schoolYear !== selectedYear;
       });
@@ -2565,7 +2616,7 @@
           const selectedOption = Array.from(scheduleSectionInput.options).find(
             (opt) => opt.value === scheduleSectionInput.value
           );
-          if (!selectedOption || selectedOption.hidden) {
+          if (!selectedOption || selectedOption.hidden || selectedOption.disabled) {
             scheduleSectionInput.value = '';
           }
         }
@@ -2630,6 +2681,7 @@
       data.schedules.forEach((item) => {
         submissionSchedules.push({ section: item.section, submissionDay: item.submission_day });
       });
+      refreshScheduleSectionOptionMarks();
       renderScheduleTable();
       return true;
     };
@@ -2728,13 +2780,17 @@
           return;
         }
         if (!sectionInput || !dayValue) return;
+        if (submissionSchedules.some((item) => item.section === sectionInput)) {
+          showAlert("This section already has a submission day. Delete it first before adding a new one.", "error");
+          return;
+        }
         setScheduleActionLoading(true, "Adding schedule...");
         try {
           const payload = new URLSearchParams();
           payload.append("action", "add");
           payload.append("section", sectionInput);
           payload.append("submission_day", dayValue);
-          await fetch(schedulesUrl, {
+          const response = await fetch(schedulesUrl, {
             method: "POST",
             headers: {
               "X-Requested-With": "XMLHttpRequest",
@@ -2743,6 +2799,11 @@
             },
             body: payload.toString(),
           });
+          const data = await response.json().catch(() => null);
+          if (!response.ok || !data || !data.ok) {
+            showAlert(data?.message || "Failed to add schedule.", "error");
+            return;
+          }
           scheduleSectionInput.value = '';
           scheduleDaySelect.value = '';
           await loadSchedules();
@@ -2797,6 +2858,19 @@
         checks.forEach((box) => {
           box.checked = scheduleSelectAll.checked;
         });
+        updateDeleteSelectedVisibility();
+      });
+    }
+
+    if (clearSelectedBtn && scheduleList) {
+      clearSelectedBtn.addEventListener('click', () => {
+        const checks = scheduleList.querySelectorAll('.schedule-select');
+        checks.forEach((box) => {
+          box.checked = false;
+        });
+        if (scheduleSelectAll) {
+          scheduleSelectAll.checked = false;
+        }
         updateDeleteSelectedVisibility();
       });
     }

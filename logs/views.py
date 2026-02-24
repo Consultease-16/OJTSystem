@@ -1668,11 +1668,21 @@ def schedules_view(request):
                 return JsonResponse({"ok": False, "message": "Section and day required."}, status=400)
             with connection.cursor() as cursor:
                 cursor.execute(
+                    "select 1 from submission_schedules where section = %s",
+                    [section],
+                )
+                if cursor.fetchone():
+                    return JsonResponse(
+                        {
+                            "ok": False,
+                            "message": "This section already has a submission day. Delete it first before adding a new one.",
+                        },
+                        status=409,
+                    )
+                cursor.execute(
                     """
                     insert into submission_schedules (section, submission_day)
                     values (%s, %s)
-                    on conflict (section)
-                    do update set submission_day = excluded.submission_day
                     """,
                     [section, int(submission_day)],
                 )
