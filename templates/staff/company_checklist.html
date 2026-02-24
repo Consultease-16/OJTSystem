@@ -668,6 +668,34 @@
 
     const getRow = (rowKey) => rows.find((r) => r.rowKey === rowKey);
 
+    const clearStage = (stage, withStatus = false) => {
+      if (!stage) return;
+      stage.checked = false;
+      stage.passedAt = "";
+      if (withStatus) {
+        stage.approval = "";
+        stage.returnedIn = "";
+      }
+    };
+
+    const clearDependentStages = (row, stageKey) => {
+      if (!row) return;
+      if (stageKey === "cityResolution") {
+        clearStage(row.companySigning);
+        clearStage(row.officePresident);
+        clearStage(row.processedNotarized);
+        return;
+      }
+      if (stageKey === "companySigning") {
+        clearStage(row.officePresident);
+        clearStage(row.processedNotarized);
+        return;
+      }
+      if (stageKey === "officePresident") {
+        clearStage(row.processedNotarized);
+      }
+    };
+
     const reloadRows = async () => {
       const data = await requestJson("GET");
       rows = (data.rows || []).map(normalizeRow);
@@ -802,12 +830,8 @@
         return;
       }
 
-      stage.checked = false;
-      stage.passedAt = "";
-      if (stageKey === "cityResolution") {
-        stage.approval = "";
-        stage.returnedIn = "";
-      }
+      clearStage(stage, stageKey === "cityResolution");
+      clearDependentStages(row, stageKey);
 
       try {
         await persistRow(row);

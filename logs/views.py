@@ -3,6 +3,7 @@ import datetime
 import csv
 import io
 import logging
+import json
 from email.mime.image import MIMEImage
 from pathlib import Path
 
