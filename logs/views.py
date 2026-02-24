@@ -954,6 +954,7 @@ def manage_records(request):
     if not section_filter:
         section_filter = request.GET.get("program", "").strip()
     school_year = request.GET.get("school_year", "").strip()
+    ojt_status = request.GET.get("ojt_status", "").strip().lower()
 
     where_clauses = []
     params = []
@@ -1045,6 +1046,39 @@ def manage_records(request):
         )
         columns = [col[0] for col in cursor.description]
         requirements = [dict(zip(columns, row)) for row in cursor.fetchall()]
+
+        if ojt_status in {"not_started", "ongoing", "completed"}:
+            def resolve_ojt_status(req):
+                total_hours = sum(
+                    int(req.get(key) or 0)
+                    for key in (
+                        "dtr_january_hours",
+                        "dtr_february_hours",
+                        "dtr_march_hours",
+                        "dtr_april_hours",
+                        "dtr_may_hours",
+                        "dtr_june_hours",
+                    )
+                )
+                if total_hours >= 500:
+                    return "completed"
+                prereq_fields = (
+                    "practicum_application",
+                    "letter_of_intent",
+                    "endorsement_letter",
+                    "practicum_parental_consent",
+                    "acceptance_form",
+                    "reply_form",
+                    "practicum_training_agreement",
+                    "ojt_log_sheet",
+                    "requirements_checklist",
+                )
+                if all(bool(req.get(field)) for field in prereq_fields):
+                    return "ongoing"
+                return "not_started"
+
+            requirements = [req for req in requirements if resolve_ojt_status(req) == ojt_status]
+
         for req in requirements:
             req["student_key"] = _mint_session_token(
                 request, "manage_records_students", str(req["student_id"])
@@ -1159,7 +1193,12 @@ def manage_records(request):
             "message": message,
             "message_type": message_type,
             "requirements": requirements,
-            "filters": {"q": search, "section": section_filter, "school_year": school_year},
+            "filters": {
+                "q": search,
+                "section": section_filter,
+                "school_year": school_year,
+                "ojt_status": ojt_status,
+            },
             "section_assignments": section_assignments,
             "sections": sections,
             "instructors": instructors,

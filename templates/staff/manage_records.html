@@ -768,6 +768,12 @@
               <option value="{{ item.section }}" data-school-year="{{ item.school_year }}">{{ item.section }}</option>
             {% endfor %}
           </select>
+          <select name="ojt_status" id="ojt_status_filter" data-selected="{{ filters.ojt_status|default:'' }}" disabled>
+            <option value="">All OJT Status</option>
+            <option value="not_started">Not started</option>
+            <option value="ongoing">Ongoing</option>
+            <option value="completed">Completed</option>
+          </select>
           <select name="school_year" id="school_year_filter" data-selected="{{ filters.school_year|default:'' }}">
             <option value="">Select School Year</option>
           </select>
@@ -1917,6 +1923,7 @@
     const searchBtn = document.getElementById('records_search_btn');
     const recordsSearchInput = document.getElementById('records_search_q');
     const recordsSectionInput = document.getElementById('records_section_filter');
+    const recordsStatusInput = document.getElementById('ojt_status_filter');
     const recordsSchoolYearInput = document.getElementById('school_year_filter');
     const recordsSearchStatus = document.getElementById('records_search_status');
     let recordsSearchDebounce;
@@ -1947,6 +1954,7 @@
       const schoolYear = (recordsSchoolYearInput?.value || '').trim();
       const query = (recordsSearchInput?.value || '').trim().toLowerCase();
       const sectionValue = (recordsSectionInput?.value || '').trim().toLowerCase();
+      const statusValue = (recordsStatusInput?.value || '').trim();
       const rows = Array.from(tbody.querySelectorAll('tr[data-student-key]'));
 
       if (!schoolYear) {
@@ -1961,16 +1969,23 @@
         const studentNoText = (row.cells?.[1]?.textContent || '').toLowerCase();
         const sectionText = (row.cells?.[2]?.textContent || '').trim().toLowerCase();
         const programText = (row.cells?.[3]?.textContent || '').toLowerCase();
+        const statusEl = row.querySelector('.ojt-status');
+        const normalizedStatus = statusEl?.classList.contains('completed')
+          ? 'completed'
+          : statusEl?.classList.contains('ongoing')
+            ? 'ongoing'
+            : 'not_started';
         const shouldShow =
           (!query || studentText.includes(query) || studentNoText.includes(query) || programText.includes(query)) &&
-          (!sectionValue || sectionText === sectionValue);
+          (!sectionValue || sectionText === sectionValue) &&
+          (!statusValue || normalizedStatus === statusValue);
         row.style.display = shouldShow ? '' : 'none';
         if (shouldShow) visibleCount += 1;
       });
 
       const emptyRow = tbody.querySelector('tr.records-empty-row');
       if (visibleCount === 0) {
-        const hasFilters = Boolean(query || sectionValue);
+        const hasFilters = Boolean(query || sectionValue || statusValue);
         ensureRequirementsEmptyRow(
           hasFilters ? 'No matching student records for the selected filters.' : 'No student records found for the selected school year.'
         );
@@ -1982,11 +1997,13 @@
     const buildRecordsSearchStatus = (isLoading) => {
       const q = (recordsSearchInput?.value || '').trim();
       const section = (recordsSectionInput?.value || '').trim();
+      const ojtStatus = (recordsStatusInput?.selectedOptions?.[0]?.textContent || '').trim();
       const schoolYear = (recordsSchoolYearInput?.value || recordsSchoolYearInput?.dataset.selected || '').trim();
 
       const parts = [];
       if (q) parts.push(`Name/ID: "${q}"`);
       if (section) parts.push(`Section: "${section}"`);
+      if (recordsStatusInput?.value) parts.push(`OJT Status: "${ojtStatus}"`);
       if (schoolYear) parts.push(`School Year: ${schoolYear}`);
 
       if (parts.length === 0) {
@@ -2080,6 +2097,9 @@
       }
       if (recordsSectionInput) {
         recordsSectionInput.addEventListener('change', queueRecordsSearch);
+      }
+      if (recordsStatusInput) {
+        recordsStatusInput.addEventListener('change', queueRecordsSearch);
       }
       if (recordsSchoolYearInput) {
         recordsSchoolYearInput.addEventListener('change', queueRecordsSearch);
@@ -2983,6 +3003,7 @@
         const selectedSection = sectionFilter.dataset.selected || '';
         const recordsSearchInput = document.getElementById('records_search_q');
         const recordsSearchBtn = document.getElementById('records_search_btn');
+        const recordsStatusFilter = document.getElementById('ojt_status_filter');
 
         const applySectionFilter = () => {
           const year = syFilter.value || syFilter.dataset.selected || '';
@@ -3012,6 +3033,14 @@
           }
           if (recordsSearchBtn) {
             recordsSearchBtn.disabled = !hasYear;
+          }
+          if (recordsStatusFilter) {
+            recordsStatusFilter.disabled = !hasYear;
+            if (!hasYear) {
+              recordsStatusFilter.value = '';
+            } else if (recordsStatusFilter.dataset.selected && !recordsStatusFilter.value) {
+              recordsStatusFilter.value = recordsStatusFilter.dataset.selected;
+            }
           }
         };
 
