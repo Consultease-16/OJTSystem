@@ -454,6 +454,21 @@
       background: rgba(161, 35, 35, 0.12);
     }
 
+    .page-notice {
+      display: none;
+      border: 1px solid rgba(173, 64, 46, 0.32);
+      background: #fff8f5;
+      color: #8a2e20;
+      border-radius: 12px;
+      padding: 12px 14px;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .page-notice.show {
+      display: block;
+    }
+
     @media (max-width: 900px) {
       .content { padding: 22px; }
     }
@@ -472,6 +487,8 @@
       <h2>Handled Sections</h2>
       <p>Sections currently assigned to you for supervision.</p>
     </section>
+
+    <div id="page_notice" class="page-notice" role="status" aria-live="polite"></div>
 
     <section class="card">
       {% if assigned_sections %}
@@ -546,8 +563,18 @@
       const backdrop = document.querySelector('.sidebar-backdrop');
       const body = document.body;
       const detailsUrl = "{% url 'instructor_section_details_by_key' %}";
+      const pageNotice = document.getElementById('page_notice');
       let activeSectionId = null;
       let modalRefreshTimer = null;
+
+      function showPageNotice(message) {
+        if (!pageNotice) return;
+        pageNotice.textContent = message || "Something went wrong.";
+        pageNotice.classList.add('show');
+        window.setTimeout(() => {
+          pageNotice.classList.remove('show');
+        }, 5000);
+      }
 
       function openSidebar() {
         body.classList.add('sidebar-open');
@@ -755,7 +782,7 @@
           if (modalRefreshTimer) clearInterval(modalRefreshTimer);
           modalRefreshTimer = setInterval(refreshOpenModal, 10000);
         } catch (err) {
-          alert(err.message || "Failed to load section details.");
+          showPageNotice(err.message || "Failed to load section details.");
         }
       }
 

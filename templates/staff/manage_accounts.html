@@ -509,18 +509,18 @@
         <div class="table-tools">
           <div class="form-group">
             <label for="student_search">Search Student</label>
-            <input id="student_search" type="search" placeholder="Name, student no, or email" />
+            <input id="student_search" type="search" placeholder="Name, student no, or email" disabled />
           </div>
           <div class="form-group">
             <label for="section_filter">Filter by Section</label>
-            <select id="section_filter">
-              <option value="">All Sections</option>
+            <select id="section_filter" disabled>
+              <option value="">Section</option>
             </select>
           </div>
           <div class="form-group">
             <label for="school_year_filter">Filter by School Year</label>
             <select id="school_year_filter">
-              <option value="">All School Years</option>
+              <option value="">Select School Year</option>
             </select>
           </div>
         </div>
@@ -798,6 +798,18 @@
       const rows = Array.from(document.querySelectorAll('#students_tbody tr.student-record-row'));
       let visibleCount = 0;
 
+      if (!syValue) {
+        rows.forEach((row) => {
+          row.style.display = 'none';
+        });
+        const emptyRow = document.querySelector('#students_tbody .students-empty');
+        if (emptyRow) {
+          emptyRow.style.display = '';
+          emptyRow.textContent = 'Select a school year to load students.';
+        }
+        return;
+      }
+
       rows.forEach((row) => {
         const searchText = (row.textContent || '').toLowerCase();
         const sectionText = (row.cells?.[2]?.textContent || '').trim().toLowerCase();
@@ -815,32 +827,35 @@
       const emptyRow = document.querySelector('#students_tbody .students-empty');
       if (emptyRow) {
         emptyRow.style.display = visibleCount === 0 ? '' : 'none';
-        emptyRow.textContent = query || sectionValue || syValue ? 'No matching students.' : 'No students found.';
+        emptyRow.textContent = query || sectionValue ? 'No matching students.' : 'No students found for the selected school year.';
       }
     };
 
     const refreshFilterOptions = () => {
       // Refresh Section Options
       const sectionSelect = document.getElementById('section_filter');
+      const sySelect = document.getElementById('school_year_filter');
+      const syValue = (sySelect?.value || '').trim();
       if (sectionSelect) {
         const currentVal = sectionSelect.value;
         const sections = Array.from(document.querySelectorAll('#students_tbody tr.student-record-row'))
+          .filter((row) => ((row.cells?.[4]?.textContent || '').trim() === syValue))
           .map((row) => (row.cells?.[2]?.textContent || '').trim())
           .filter((value) => value.length > 0);
         const uniqueSections = Array.from(new Set(sections)).sort((a, b) => a.localeCompare(b));
 
-        sectionSelect.innerHTML = '<option value="">All Sections</option>';
+        sectionSelect.innerHTML = '<option value="">Section</option>';
         uniqueSections.forEach((section) => {
           const option = document.createElement('option');
           option.value = section;
           option.textContent = section;
           sectionSelect.appendChild(option);
         });
-        sectionSelect.value = currentVal;
+        sectionSelect.value = uniqueSections.includes(currentVal) ? currentVal : '';
+        sectionSelect.disabled = !syValue;
       }
 
       // Refresh School Year Options
-      const sySelect = document.getElementById('school_year_filter');
       if (sySelect) {
         const currentVal = sySelect.value;
         
@@ -868,7 +883,7 @@
         // Sort descending (newest first)
         const uniqueYears = Array.from(allYears).sort().reverse();
 
-        sySelect.innerHTML = '<option value="">All School Years</option>';
+        sySelect.innerHTML = '<option value="">Select School Year</option>';
         uniqueYears.forEach((year) => {
           const option = document.createElement('option');
           option.value = year;
@@ -1104,13 +1119,25 @@
       sectionFilter.addEventListener('change', applyStudentFilters);
     }
     if (syFilter) {
-      syFilter.addEventListener('change', applyStudentFilters);
+      syFilter.addEventListener('change', () => {
+        if (studentSearch) {
+          studentSearch.disabled = !syFilter.value;
+          if (!syFilter.value) {
+            studentSearch.value = '';
+          }
+        }
+        refreshFilterOptions();
+        applyStudentFilters();
+      });
     }
     const instructorSearch = document.getElementById('instructor_search');
     if (instructorSearch) {
       instructorSearch.addEventListener('input', applyInstructorFilter);
     }
     refreshFilterOptions();
+    if (studentSearch && syFilter) {
+      studentSearch.disabled = !syFilter.value;
+    }
     applyStudentFilters();
     applyInstructorFilter();
     bindEditModal();

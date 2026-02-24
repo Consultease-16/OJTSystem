@@ -761,12 +761,17 @@
         {% endif %}
 
         <form class="filters" method="get" action="" id="records_filter_form" style="margin-bottom: 20px;">
-          <input type="text" name="q" id="records_search_q" placeholder="Search student name or ID" value="{{ filters.q|default:'' }}" />
-          <input type="text" name="program" id="records_search_program" placeholder="Section / Program" value="{{ filters.program|default:'' }}" />
-          <select name="school_year" id="school_year_filter" data-selected="{{ filters.school_year|default:'' }}">
-            <option value="">School Year</option>
+          <input type="text" name="q" id="records_search_q" placeholder="Search student name or ID" value="{{ filters.q|default:'' }}" disabled />
+          <select name="section" id="records_section_filter" data-selected="{{ filters.section|default:'' }}">
+            <option value="">All Sections</option>
+            {% for item in sections %}
+              <option value="{{ item.section }}" data-school-year="{{ item.school_year }}">{{ item.section }}</option>
+            {% endfor %}
           </select>
-          <button type="submit" id="records_search_btn">Search</button>
+          <select name="school_year" id="school_year_filter" data-selected="{{ filters.school_year|default:'' }}">
+            <option value="">Select School Year</option>
+          </select>
+          <button type="submit" id="records_search_btn" disabled>Search</button>
         </form>
         <div id="records_search_status" class="search-live-status" aria-live="polite"></div>
 
@@ -811,7 +816,7 @@
                       {% with total=jan|add:feb|add:mar|add:apr|add:may|add:jun %}
                         {% if total|add:0 >= 500 %}
                           <span class="ojt-status completed">Completed</span>
-                        {% elif req.practicum_application and req.letter_of_intent and req.endorsement_letter and req.practicum_parental_consent and req.acceptance_form and req.reply_form and req.practicum_training_agreement and req.attendance_sheet and req.ojt_log_sheet and req.requirements_checklist %}
+                        {% elif req.practicum_application and req.letter_of_intent and req.endorsement_letter and req.practicum_parental_consent and req.acceptance_form and req.reply_form and req.practicum_training_agreement and req.ojt_log_sheet and req.requirements_checklist %}
                           <span class="ojt-status ongoing">Ongoing</span>
                         {% else %}
                           <span class="ojt-status not-started">Not started</span>
@@ -862,7 +867,13 @@
                 {% endfor %}
               {% else %}
                 <tr>
-                  <td colspan="6">No student records found.</td>
+                  <td colspan="7">
+                    {% if filters.school_year %}
+                      No student records found for the selected filters.
+                    {% else %}
+                      Select a school year to load student records.
+                    {% endif %}
+                  </td>
                 </tr>
               {% endif %}
             </tbody>
@@ -979,8 +990,19 @@
         <h2>Submission Schedule Plotter</h2>
         <form class="schedule-form" id="schedule_form">
           <div class="field">
+            <label for="schedule_school_year">School Year</label>
+            <select id="schedule_school_year" data-selected="">
+              <option value="">Select School Year</option>
+            </select>
+          </div>
+          <div class="field">
             <label for="schedule_section">Section</label>
-            <input id="schedule_section" type="text" placeholder="e.g. 4A, 4B" required />
+            <select id="schedule_section" required disabled>
+              <option value="">Select Section</option>
+              {% for item in sections %}
+                <option value="{{ item.section }}" data-school-year="{{ item.school_year }}">{{ item.section }}</option>
+              {% endfor %}
+            </select>
           </div>
           <div class="field">
             <label for="schedule_day">Submission Day</label>
@@ -1010,7 +1032,11 @@
                 <th>Action</th>
               </tr>
             </thead>
-            <tbody id="schedule_list"></tbody>
+            <tbody id="schedule_list">
+              <tr>
+                <td colspan="4">Select a school year to load schedules.</td>
+              </tr>
+            </tbody>
           </table>
         </div>
       </section>
@@ -1208,6 +1234,16 @@
       alert.innerHTML = `<span>${text}</span><button class="close-alert" type="button" aria-label="Close alert">✕</button>`;
       messagePanel.appendChild(alert);
       autoDismissAlert(alert);
+    };
+
+    const showFieldValidation = (field, message) => {
+      if (!field) return;
+      field.setCustomValidity(message || "Please select an item in the list.");
+      field.reportValidity();
+      const clearValidation = () => field.setCustomValidity("");
+      field.addEventListener("change", clearValidation, { once: true });
+      field.addEventListener("input", clearValidation, { once: true });
+      field.focus();
     };
 
     const showModalAlert = (text, type) => {
@@ -1718,7 +1754,6 @@
         reqs.acceptance_form === true &&
         reqs.reply_form === true &&
         reqs.practicum_training_agreement === true &&
-        reqs.attendance_sheet === true &&
         reqs.ojt_log_sheet === true &&
         reqs.requirements_checklist === true;
 
@@ -1881,25 +1916,81 @@
     const filterForm = document.getElementById('records_filter_form');
     const searchBtn = document.getElementById('records_search_btn');
     const recordsSearchInput = document.getElementById('records_search_q');
-    const recordsProgramInput = document.getElementById('records_search_program');
+    const recordsSectionInput = document.getElementById('records_section_filter');
     const recordsSchoolYearInput = document.getElementById('school_year_filter');
     const recordsSearchStatus = document.getElementById('records_search_status');
     let recordsSearchDebounce;
     let recordsSearchInProgress = false;
     let recordsSearchQueued = false;
+    let loadedRecordsSchoolYear = (recordsSchoolYearInput?.value || recordsSchoolYearInput?.dataset.selected || '').trim();
+
+    const ensureRequirementsEmptyRow = (message) => {
+      const tbody = document.getElementById('requirements_tbody');
+      if (!tbody) return;
+      let row = tbody.querySelector('tr.records-empty-row');
+      if (!row) {
+        row = document.createElement('tr');
+        row.className = 'records-empty-row';
+        row.innerHTML = '<td colspan="7"></td>';
+        tbody.appendChild(row);
+      }
+      const cell = row.querySelector('td');
+      if (cell) {
+        cell.textContent = message;
+      }
+      row.style.display = '';
+    };
+
+    const applyRecordsClientFilters = () => {
+      const tbody = document.getElementById('requirements_tbody');
+      if (!tbody) return;
+      const schoolYear = (recordsSchoolYearInput?.value || '').trim();
+      const query = (recordsSearchInput?.value || '').trim().toLowerCase();
+      const sectionValue = (recordsSectionInput?.value || '').trim().toLowerCase();
+      const rows = Array.from(tbody.querySelectorAll('tr[data-student-key]'));
+
+      if (!schoolYear) {
+        rows.forEach((row) => { row.style.display = 'none'; });
+        ensureRequirementsEmptyRow('Select a school year to load student records.');
+        return;
+      }
+
+      let visibleCount = 0;
+      rows.forEach((row) => {
+        const studentText = (row.cells?.[0]?.textContent || '').toLowerCase();
+        const studentNoText = (row.cells?.[1]?.textContent || '').toLowerCase();
+        const sectionText = (row.cells?.[2]?.textContent || '').trim().toLowerCase();
+        const programText = (row.cells?.[3]?.textContent || '').toLowerCase();
+        const shouldShow =
+          (!query || studentText.includes(query) || studentNoText.includes(query) || programText.includes(query)) &&
+          (!sectionValue || sectionText === sectionValue);
+        row.style.display = shouldShow ? '' : 'none';
+        if (shouldShow) visibleCount += 1;
+      });
+
+      const emptyRow = tbody.querySelector('tr.records-empty-row');
+      if (visibleCount === 0) {
+        const hasFilters = Boolean(query || sectionValue);
+        ensureRequirementsEmptyRow(
+          hasFilters ? 'No matching student records for the selected filters.' : 'No student records found for the selected school year.'
+        );
+      } else if (emptyRow) {
+        emptyRow.style.display = 'none';
+      }
+    };
 
     const buildRecordsSearchStatus = (isLoading) => {
       const q = (recordsSearchInput?.value || '').trim();
-      const program = (recordsProgramInput?.value || '').trim();
+      const section = (recordsSectionInput?.value || '').trim();
       const schoolYear = (recordsSchoolYearInput?.value || recordsSchoolYearInput?.dataset.selected || '').trim();
 
       const parts = [];
       if (q) parts.push(`Name/ID: "${q}"`);
-      if (program) parts.push(`Section/Program: "${program}"`);
+      if (section) parts.push(`Section: "${section}"`);
       if (schoolYear) parts.push(`School Year: ${schoolYear}`);
 
       if (parts.length === 0) {
-        return isLoading ? 'Refreshing records...' : 'Showing all records.';
+        return isLoading ? 'Waiting for filters...' : 'Please select a school year to load student records.';
       }
 
       const prefix = isLoading ? 'Searching' : 'Showing results for';
@@ -1919,6 +2010,21 @@
         return;
       }
 
+      const schoolYear = (recordsSchoolYearInput?.value || '').trim();
+      if (!schoolYear) {
+        loadedRecordsSchoolYear = '';
+        applyRecordsClientFilters();
+        updateRecordsSearchStatus(false);
+        return;
+      }
+
+      // Fetch only when the selected school year changes; name/section filtering is client-side.
+      if (loadedRecordsSchoolYear === schoolYear) {
+        applyRecordsClientFilters();
+        updateRecordsSearchStatus(false);
+        return;
+      }
+
       recordsSearchInProgress = true;
       if (searchBtn) {
         searchBtn.disabled = true;
@@ -1930,9 +2036,15 @@
       updateRecordsSearchStatus(true);
       const formData = new FormData(filterForm);
       const params = new URLSearchParams(formData);
-      const url = `${window.location.pathname}?${params.toString()}`;
-      window.history.replaceState({}, '', url);
+      params.set('q', '');
+      params.set('section', '');
+      const fetchParams = new URLSearchParams();
+      fetchParams.set('school_year', schoolYear);
+      const url = `${window.location.pathname}?${fetchParams.toString()}`;
+      window.history.replaceState({}, '', `${window.location.pathname}?${params.toString()}`);
       await refreshTable(url);
+      loadedRecordsSchoolYear = schoolYear;
+      applyRecordsClientFilters();
 
       if (searchBtn) {
         searchBtn.disabled = false;
@@ -1966,14 +2078,15 @@
       if (recordsSearchInput) {
         recordsSearchInput.addEventListener('input', queueRecordsSearch);
       }
-      if (recordsProgramInput) {
-        recordsProgramInput.addEventListener('input', queueRecordsSearch);
+      if (recordsSectionInput) {
+        recordsSectionInput.addEventListener('change', queueRecordsSearch);
       }
       if (recordsSchoolYearInput) {
         recordsSchoolYearInput.addEventListener('change', queueRecordsSearch);
       }
 
       updateRecordsSearchStatus(false);
+      applyRecordsClientFilters();
     }
 
     const syncForm = document.getElementById('sync_students_form');
@@ -2017,6 +2130,7 @@
 
     const scheduleForm = document.getElementById('schedule_form');
     const scheduleList = document.getElementById('schedule_list');
+    const scheduleSchoolYearInput = document.getElementById('schedule_school_year');
     const scheduleSectionInput = document.getElementById('schedule_section');
     const scheduleDaySelect = document.getElementById('schedule_day');
     const deleteSelectedBtn = document.getElementById('delete_selected_schedules');
@@ -2041,6 +2155,45 @@
     const assignmentInstructor = document.getElementById('assignment_instructor');
     const assignmentForm = document.getElementById('section_assignment_form');
     const assignmentListBody = document.getElementById('assignment_list_body');
+    const schoolYearControls = [recordsSchoolYearInput, assignmentSchoolYear, scheduleSchoolYearInput].filter(Boolean);
+    let isSyncingSchoolYear = false;
+
+    const syncSchoolYearSelections = (source, value) => {
+      if (isSyncingSchoolYear) return;
+      isSyncingSchoolYear = true;
+      schoolYearControls.forEach((control) => {
+        if (!control || control === source) return;
+        const hasOption = Array.from(control.options || []).some((opt) => opt.value === value);
+        const nextValue = value && hasOption ? value : '';
+        if (control.value !== nextValue) {
+          control.value = nextValue;
+          control.dispatchEvent(new Event('change'));
+        }
+      });
+      isSyncingSchoolYear = false;
+    };
+
+    if (recordsSchoolYearInput) {
+      recordsSchoolYearInput.addEventListener('change', () => {
+        if (!isSyncingSchoolYear) {
+          syncSchoolYearSelections(recordsSchoolYearInput, recordsSchoolYearInput.value);
+        }
+      });
+    }
+    if (assignmentSchoolYear) {
+      assignmentSchoolYear.addEventListener('change', () => {
+        if (!isSyncingSchoolYear) {
+          syncSchoolYearSelections(assignmentSchoolYear, assignmentSchoolYear.value);
+        }
+      });
+    }
+    if (scheduleSchoolYearInput) {
+      scheduleSchoolYearInput.addEventListener('change', () => {
+        if (!isSyncingSchoolYear) {
+          syncSchoolYearSelections(scheduleSchoolYearInput, scheduleSchoolYearInput.value);
+        }
+      });
+    }
 
     const filterAssignmentRowsByYear = (year) => {
       if (!assignmentListBody) return;
@@ -2051,7 +2204,7 @@
           row.hidden = false;
           return;
         }
-        row.hidden = Boolean(year) && rowYear !== year;
+        row.hidden = !year || rowYear !== year;
       });
     };
 
@@ -2083,10 +2236,12 @@
       });
 
       const filterSections = (year) => {
+        const hasYear = Boolean(year);
         sectionOptions.forEach((opt) => {
-          opt.hidden = year && opt.dataset.schoolYear !== year;
+          opt.hidden = !hasYear || opt.dataset.schoolYear !== year;
         });
         assignmentSection.value = '';
+        assignmentSection.disabled = !hasYear;
       };
 
       assignmentSchoolYear.addEventListener('change', () => {
@@ -2095,6 +2250,7 @@
         filterAssignmentRowsByYear(selectedYear);
       });
 
+      filterSections(assignmentSchoolYear.value);
       filterAssignmentRowsByYear(assignmentSchoolYear.value);
     }
 
@@ -2105,11 +2261,11 @@
         const sectionId = (formData.get('section_key') || '').toString().trim();
         const instructorId = (formData.get('staff_key') || '').toString().trim();
         if (!sectionId) {
-          showAlert("Please select a section.", "error");
+          showFieldValidation(assignmentSection, "Please select a section.");
           return;
         }
         if (!instructorId) {
-          showAlert("Please select a practicum instructor.", "error");
+          showFieldValidation(assignmentInstructor, "Please select a practicum instructor.");
           return;
         }
         const selectedSection = assignmentSection?.selectedOptions?.[0]?.textContent?.trim() || "Selected section";
@@ -2203,6 +2359,9 @@
     });
 
     const submissionSchedules = [];
+    const scheduleSectionOptions = scheduleSectionInput
+      ? Array.from(scheduleSectionInput.querySelectorAll('option[data-school-year]'))
+      : [];
 
     const setScheduleActionLoading = (isLoading, text) => {
       if (!scheduleActionLoading) return;
@@ -2363,13 +2522,65 @@
       deleteSelectedBtn.style.display = selected > 0 ? 'inline-flex' : 'none';
     };
 
+    const getSelectedScheduleYear = () => (scheduleSchoolYearInput?.value || '').trim();
+
+    const sectionExistsInYear = (section, schoolYear) => {
+      if (!schoolYear) return false;
+      return scheduleSectionOptions.some(
+        (opt) => opt.value === section && opt.dataset.schoolYear === schoolYear
+      );
+    };
+
+    const applyScheduleSectionFilter = () => {
+      if (!scheduleSchoolYearInput || !scheduleSectionInput) return;
+      const selectedYear = getSelectedScheduleYear();
+      scheduleSectionOptions.forEach((opt) => {
+        opt.hidden = !selectedYear || opt.dataset.schoolYear !== selectedYear;
+      });
+      if (!selectedYear) {
+        scheduleSectionInput.value = '';
+        scheduleSectionInput.disabled = true;
+      } else {
+        if (scheduleSectionInput.value) {
+          const selectedOption = Array.from(scheduleSectionInput.options).find(
+            (opt) => opt.value === scheduleSectionInput.value
+          );
+          if (!selectedOption || selectedOption.hidden) {
+            scheduleSectionInput.value = '';
+          }
+        }
+        scheduleSectionInput.disabled = false;
+      }
+    };
+
     const renderScheduleTable = () => {
       if (!scheduleList) return;
       scheduleList.innerHTML = '';
       if (scheduleSelectAll) {
         scheduleSelectAll.checked = false;
       }
-      submissionSchedules.forEach((item, index) => {
+
+      const selectedYear = getSelectedScheduleYear();
+      if (!selectedYear) {
+        const row = document.createElement('tr');
+        row.innerHTML = '<td colspan="4">Select a school year to load schedules.</td>';
+        scheduleList.appendChild(row);
+        updateDeleteSelectedVisibility();
+        return;
+      }
+
+      const filteredSchedules = submissionSchedules.filter((item) =>
+        sectionExistsInYear(item.section, selectedYear)
+      );
+      if (filteredSchedules.length === 0) {
+        const row = document.createElement('tr');
+        row.innerHTML = '<td colspan="4">No schedules found for the selected school year.</td>';
+        scheduleList.appendChild(row);
+        updateDeleteSelectedVisibility();
+        return;
+      }
+
+      filteredSchedules.forEach((item) => {
         const row = document.createElement('tr');
         row.innerHTML = `
           <td><input type="checkbox" class="schedule-select" data-section="${item.section}" aria-label="Select ${item.section}" /></td>
@@ -2489,28 +2700,31 @@
     if (scheduleForm && scheduleList) {
       scheduleForm.addEventListener('submit', async (event) => {
         event.preventDefault();
+        const selectedYear = getSelectedScheduleYear();
         const sectionInput = scheduleSectionInput?.value.trim();
         const dayValue = scheduleDaySelect?.value;
+        if (!selectedYear) {
+          showFieldValidation(scheduleSchoolYearInput, "Please select a school year first.");
+          return;
+        }
         if (!sectionInput || !dayValue) return;
-        const sections = sectionInput.split(',').map(s => s.trim()).filter(s => s.length > 0);
         setScheduleActionLoading(true, "Adding schedule...");
         try {
-          for (const section of sections) {
-            const payload = new URLSearchParams();
-            payload.append("action", "add");
-            payload.append("section", section);
-            payload.append("submission_day", dayValue);
-            await fetch(schedulesUrl, {
-              method: "POST",
-              headers: {
-                "X-Requested-With": "XMLHttpRequest",
-                "X-CSRFToken": csrfToken || "",
-                "Content-Type": "application/x-www-form-urlencoded",
-              },
-              body: payload.toString(),
-            });
-          }
-          scheduleForm.reset();
+          const payload = new URLSearchParams();
+          payload.append("action", "add");
+          payload.append("section", sectionInput);
+          payload.append("submission_day", dayValue);
+          await fetch(schedulesUrl, {
+            method: "POST",
+            headers: {
+              "X-Requested-With": "XMLHttpRequest",
+              "X-CSRFToken": csrfToken || "",
+              "Content-Type": "application/x-www-form-urlencoded",
+            },
+            body: payload.toString(),
+          });
+          scheduleSectionInput.value = '';
+          scheduleDaySelect.value = '';
           await loadSchedules();
           refreshModalAttendance();
         } finally {
@@ -2600,6 +2814,13 @@
             setScheduleActionLoading(false);
           }
         });
+      });
+    }
+
+    if (scheduleSchoolYearInput) {
+      scheduleSchoolYearInput.addEventListener('change', () => {
+        applyScheduleSectionFilter();
+        renderScheduleTable();
       });
     }
 
@@ -2748,8 +2969,57 @@
       };
 
       const syFilter = document.getElementById('school_year_filter');
+      const sectionFilter = document.getElementById('records_section_filter');
+      const scheduleYearFilter = document.getElementById('schedule_school_year');
       if (syFilter) {
         populateSchoolYears('school_year_filter', syFilter.dataset.selected);
+      }
+      if (scheduleYearFilter) {
+        populateSchoolYears('schedule_school_year', scheduleYearFilter.dataset.selected);
+      }
+
+      if (syFilter && sectionFilter) {
+        const sectionOptions = Array.from(sectionFilter.querySelectorAll('option[data-school-year]'));
+        const selectedSection = sectionFilter.dataset.selected || '';
+        const recordsSearchInput = document.getElementById('records_search_q');
+        const recordsSearchBtn = document.getElementById('records_search_btn');
+
+        const applySectionFilter = () => {
+          const year = syFilter.value || syFilter.dataset.selected || '';
+          const hasYear = Boolean(year);
+          sectionOptions.forEach((opt) => {
+            opt.hidden = hasYear && opt.dataset.schoolYear !== year;
+          });
+
+          if (!hasYear) {
+            sectionFilter.value = '';
+            sectionFilter.disabled = true;
+          } else {
+            sectionFilter.disabled = false;
+            const visibleSelected = sectionOptions.find((opt) => opt.value === selectedSection && !opt.hidden);
+            if (visibleSelected) {
+              sectionFilter.value = selectedSection;
+            } else if (sectionFilter.value && sectionFilter.querySelector(`option[value="${sectionFilter.value}"]`)?.hidden) {
+              sectionFilter.value = '';
+            }
+          }
+
+          if (recordsSearchInput) {
+            recordsSearchInput.disabled = !hasYear;
+            if (!hasYear) {
+              recordsSearchInput.value = '';
+            }
+          }
+          if (recordsSearchBtn) {
+            recordsSearchBtn.disabled = !hasYear;
+          }
+        };
+
+        applySectionFilter();
+        syFilter.addEventListener('change', () => {
+          syFilter.dataset.selected = syFilter.value;
+          applySectionFilter();
+        });
       }
 
       const navBtn = document.querySelector('.nav-btn');

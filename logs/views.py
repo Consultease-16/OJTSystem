@@ -949,30 +949,27 @@ def manage_records(request):
     message = request.session.pop("flash_message", None)
     message_type = request.session.pop("flash_message_type", None)
     search = request.GET.get("q", "").strip()
-    program = request.GET.get("program", "").strip()
+    section_filter = request.GET.get("section", "").strip()
+    if not section_filter:
+        section_filter = request.GET.get("program", "").strip()
     school_year = request.GET.get("school_year", "").strip()
 
     where_clauses = []
     params = []
 
-    if search:
-        where_clauses.append(
-            "(lower(last_name) like lower(%s) or lower(first_name) like lower(%s) or lower(student_no) like lower(%s))"
-        )
-        like = f"%{search}%"
-        params.extend([like, like, like])
-
-    if program:
-        where_clauses.append("(lower(program) like lower(%s) or lower(section) like lower(%s))")
-        like = f"%{program}%"
-        params.extend([like, like])
-
+    where_sql = "where 1 = 0"
     if school_year:
         where_clauses.append("school_year = %s")
         params.append(school_year)
-
-    where_sql = ""
-    if where_clauses:
+        if search:
+            where_clauses.append(
+                "(lower(last_name) like lower(%s) or lower(first_name) like lower(%s) or lower(student_no) like lower(%s))"
+            )
+            like = f"%{search}%"
+            params.extend([like, like, like])
+        if section_filter:
+            where_clauses.append("section = %s")
+            params.append(section_filter)
         where_sql = "where " + " and ".join(where_clauses)
 
     _ensure_section_instructor_tables()
@@ -1161,7 +1158,7 @@ def manage_records(request):
             "message": message,
             "message_type": message_type,
             "requirements": requirements,
-            "filters": {"q": search, "program": program, "school_year": school_year},
+            "filters": {"q": search, "section": section_filter, "school_year": school_year},
             "section_assignments": section_assignments,
             "sections": sections,
             "instructors": instructors,
