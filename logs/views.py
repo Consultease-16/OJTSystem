@@ -1378,7 +1378,39 @@ def _ensure_company_checklist_table():
         )
         cursor.execute(
             """
+            create table if not exists company_partnered (
+              id uuid primary key default gen_random_uuid(),
+              checklist_row_id uuid not null unique references company_checklist(id) on delete cascade,
+              company_name text not null default '',
+              moa_start_date date not null,
+              moa_expiration_date date,
+              created_at timestamptz not null default now(),
+              updated_at timestamptz not null default now()
+            )
+            """
+        )
+        cursor.execute(
+            """
+            create index if not exists company_partnered_moa_start_date_idx
+              on company_partnered (moa_start_date)
+            """
+        )
+        cursor.execute(
+            """
             create or replace function set_company_checklist_updated_at()
+            returns trigger
+            language plpgsql
+            as $$
+            begin
+              new.updated_at := now();
+              return new;
+            end;
+            $$;
+            """
+        )
+        cursor.execute(
+            """
+            create or replace function set_company_partnered_updated_at()
             returns trigger
             language plpgsql
             as $$
@@ -1398,6 +1430,61 @@ def _ensure_company_checklist_table():
             execute function set_company_checklist_updated_at()
             """
         )
+        cursor.execute("drop trigger if exists company_partnered_updated_at_trg on company_partnered")
+        cursor.execute(
+            """
+            create trigger company_partnered_updated_at_trg
+            before update on company_partnered
+            for each row
+            execute function set_company_partnered_updated_at()
+            """
+        )
+
+
+def _serialize_company_partnered_row(request, row):
+    now = timezone.localdate()
+    start_date = row[3]
+    expiration_date = row[4]
+    status = "active"
+    status_label = "Active"
+    days_left = None
+    notice = ""
+
+    if expiration_date:
+        days_left = (expiration_date - now).days
+        if days_left < 0:
+            status = "expired"
+            status_label = "Expired"
+        elif days_left <= 183:
+            status = "expiring"
+            status_label = f"Active ({days_left} day{'s' if days_left != 1 else ''} left)"
+            notice = f"Memorandum of Agreement expiration is nearing for {row[2] or 'this company'}."
+
+    return {
+        "row_key": _mint_session_token(request, "company_checklist_rows", str(row[1])),
+        "company_name": row[2] or "",
+        "moa_start_date": start_date.isoformat() if start_date else "",
+        "moa_expiration_date": expiration_date.isoformat() if expiration_date else "",
+        "status": status,
+        "status_label": status_label,
+        "notice": notice,
+    }
+
+
+def _fetch_company_partnered_rows(request, cursor):
+    cursor.execute(
+        """
+        select
+          id,
+          checklist_row_id,
+          company_name,
+          moa_start_date,
+          moa_expiration_date
+        from company_partnered
+        order by moa_start_date asc, company_name asc
+        """
+    )
+    return [_serialize_company_partnered_row(request, row) for row in cursor.fetchall()]
 
 
 def _serialize_company_checklist_row(request, row):
@@ -1485,10 +1572,12 @@ def company_checklist_data(request):
                 """
             )
             rows = cursor.fetchall()
+            partnered_rows = _fetch_company_partnered_rows(request, cursor)
         return JsonResponse(
             {
                 "ok": True,
                 "rows": [_serialize_company_checklist_row(request, row) for row in rows],
+                "partnered": partnered_rows,
             }
         )
 
@@ -1532,7 +1621,50 @@ def company_checklist_data(request):
             return JsonResponse({"ok": False, "message": "Missing or invalid row key."}, status=400)
         with connection.cursor() as cursor:
             cursor.execute("delete from company_checklist where id = %s", [row_id])
-        return JsonResponse({"ok": True})
+            partnered_rows = _fetch_company_partnered_rows(request, cursor)
+        return JsonResponse({"ok": True, "partnered": partnered_rows})
+
+    if action == "update_partnered_expiration":
+        row_key = payload.get("row_key")
+        row_id = _resolve_session_token(request, "company_checklist_rows", row_key)
+        if not row_id:
+            return JsonResponse({"ok": False, "message": "Missing or invalid row key."}, status=400)
+
+        expiration_raw = (payload.get("expiration_date") or "").strip()
+        expiration_date = None
+        if expiration_raw:
+            try:
+                expiration_date = datetime.date.fromisoformat(expiration_raw)
+            except ValueError:
+                return JsonResponse({"ok": False, "message": "Invalid expiration date format."}, status=400)
+
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                update company_partnered
+                set moa_expiration_date = %s
+                where checklist_row_id = %s
+                returning
+                  id,
+                  checklist_row_id,
+                  company_name,
+                  moa_start_date,
+                  moa_expiration_date
+                """,
+                [expiration_date, row_id],
+            )
+            updated = cursor.fetchone()
+            partnered_rows = _fetch_company_partnered_rows(request, cursor)
+
+        if not updated:
+            return JsonResponse({"ok": False, "message": "Company is not yet in active partnered list."}, status=404)
+        return JsonResponse(
+            {
+                "ok": True,
+                "partnered_row": _serialize_company_partnered_row(request, updated),
+                "partnered": partnered_rows,
+            }
+        )
 
     if action == "update":
         row_key = payload.get("row_key")
@@ -1611,9 +1743,32 @@ def company_checklist_data(request):
                 ],
             )
             updated = cursor.fetchone()
+            if updated:
+                if notarized_checked and notarized_passed_at:
+                    moa_start_date = notarized_passed_at.date() if isinstance(notarized_passed_at, datetime.datetime) else notarized_passed_at
+                    cursor.execute(
+                        """
+                        insert into company_partnered (checklist_row_id, company_name, moa_start_date)
+                        values (%s, %s, %s)
+                        on conflict (checklist_row_id)
+                        do update set
+                          company_name = excluded.company_name,
+                          moa_start_date = excluded.moa_start_date
+                        """,
+                        [row_id, (row.get("companyName") or "").strip(), moa_start_date],
+                    )
+                else:
+                    cursor.execute("delete from company_partnered where checklist_row_id = %s", [row_id])
+                partnered_rows = _fetch_company_partnered_rows(request, cursor)
         if not updated:
             return JsonResponse({"ok": False, "message": "Checklist row not found."}, status=404)
-        return JsonResponse({"ok": True, "row": _serialize_company_checklist_row(request, updated)})
+        return JsonResponse(
+            {
+                "ok": True,
+                "row": _serialize_company_checklist_row(request, updated),
+                "partnered": partnered_rows,
+            }
+        )
 
     return JsonResponse({"ok": False, "message": "Unknown action."}, status=400)
 

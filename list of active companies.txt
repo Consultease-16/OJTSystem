@@ -1,0 +1,22 @@
+company checklist
+add a another page for active partnered companies(but it will be best if its another modal only, and it will not refresh the page after they switch for company list and active partnered companies) 
+list of active companies
+
+once the user already marked the company as processed and notarized it will go to the active partnered companies list
+(this one will need a new database table (company_partnered))
+the list will be for example the first in list is date of Feb 25,2026 then the next date is March 25, 2026 so the list will look like
+
+February 25, 2026
+March 25, 2026
+
+something like this,
+
+then in the side it will show the starting day of the MOA(it will be when the user marked it as processed and notarized, that date will be the day of the start date of the MOA) of the Active Partnered Company and beside is Expiration day of the MOA of the Active Partnered Company(the user is the one will enter the expiration day of the MOA)
+then beside of it again is MOA Status, (Active, Expired or it can be changing into active and how many months/days left before the expiration, but this function is will do its work if it entered the 6months mark before the expiration date) 
+Active color Green
+Expired Color Red
+Active green but when changes to count before the expiration date(color yellow)
+
+the user is the one will be adding the date of the expiration
+6month prior of the expiration  will notify the user the expiration is nearing for(company name)
+backdate for expiration of the active companies 

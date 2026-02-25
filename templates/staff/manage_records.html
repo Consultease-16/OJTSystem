@@ -777,7 +777,6 @@
           <select name="school_year" id="school_year_filter" data-selected="{{ filters.school_year|default:'' }}">
             <option value="">Select School Year</option>
           </select>
-          <button type="submit" id="records_search_btn" disabled>Search</button>
         </form>
         <div id="records_search_status" class="search-live-status" aria-live="polite"></div>
 
@@ -1054,6 +1053,13 @@
     <div class="loading-card" role="status" aria-live="polite">
       <span class="loading-spinner" aria-hidden="true"></span>
       <span id="schedule_action_loading_text">Processing schedule...</span>
+    </div>
+  </div>
+
+  <div class="loading-backdrop" id="records_filter_loading" aria-hidden="true">
+    <div class="loading-card" role="status" aria-live="polite">
+      <span class="loading-spinner" aria-hidden="true"></span>
+      <span id="records_filter_loading_text">Loading records...</span>
     </div>
   </div>
 
@@ -1921,29 +1927,45 @@
     });
 
     const filterForm = document.getElementById('records_filter_form');
-    const searchBtn = document.getElementById('records_search_btn');
     const recordsSearchInput = document.getElementById('records_search_q');
     const recordsSectionInput = document.getElementById('records_section_filter');
     const recordsStatusInput = document.getElementById('ojt_status_filter');
     const recordsSchoolYearInput = document.getElementById('school_year_filter');
     const recordsSearchStatus = document.getElementById('records_search_status');
+    const recordsFilterLoading = document.getElementById('records_filter_loading');
+    const recordsFilterLoadingText = document.getElementById('records_filter_loading_text');
     let recordsSearchDebounce;
     let recordsSearchInProgress = false;
     let recordsSearchQueued = false;
+    let pendingRecordsLoading = false;
     let loadedRecordsSchoolYear = (recordsSchoolYearInput?.value || recordsSchoolYearInput?.dataset.selected || '').trim();
+
+    const setRecordsFilterLoading = (isLoading, text) => {
+      if (!recordsFilterLoading) return;
+      if (recordsFilterLoadingText) {
+        recordsFilterLoadingText.textContent = text || 'Loading records...';
+      }
+      recordsFilterLoading.classList.toggle('active', Boolean(isLoading));
+      recordsFilterLoading.setAttribute('aria-hidden', isLoading ? 'false' : 'true');
+    };
 
     const ensureRequirementsEmptyRow = (message) => {
       const tbody = document.getElementById('requirements_tbody');
       if (!tbody) return;
-      let row = tbody.querySelector('tr.records-empty-row');
+      const emptyRows = Array.from(tbody.querySelectorAll('tr')).filter(
+        (tr) => !tr.hasAttribute('data-student-key')
+      );
+      let row = emptyRows[0] || null;
       if (!row) {
         row = document.createElement('tr');
-        row.className = 'records-empty-row';
         row.innerHTML = '<td colspan="7"></td>';
         tbody.appendChild(row);
       }
+      row.classList.add('records-empty-row');
+      emptyRows.slice(1).forEach((tr) => tr.remove());
       const cell = row.querySelector('td');
       if (cell) {
+        cell.colSpan = 7;
         cell.textContent = message;
       }
       row.style.display = '';
@@ -2027,6 +2049,8 @@
         recordsSearchQueued = true;
         return;
       }
+      const showLoading = pendingRecordsLoading;
+      pendingRecordsLoading = false;
 
       const schoolYear = (recordsSchoolYearInput?.value || '').trim();
       if (!schoolYear) {
@@ -2044,33 +2068,29 @@
       }
 
       recordsSearchInProgress = true;
-      if (searchBtn) {
-        searchBtn.disabled = true;
-        searchBtn.classList.add('is-loading');
-        searchBtn.dataset.originalText = searchBtn.textContent;
-        searchBtn.textContent = 'Searching...';
+      try {
+        if (showLoading) {
+          setRecordsFilterLoading(true, 'Loading records...');
+        }
+        updateRecordsSearchStatus(true);
+        const formData = new FormData(filterForm);
+        const params = new URLSearchParams(formData);
+        params.set('q', '');
+        params.set('section', '');
+        const fetchParams = new URLSearchParams();
+        fetchParams.set('school_year', schoolYear);
+        const url = `${window.location.pathname}?${fetchParams.toString()}`;
+        window.history.replaceState({}, '', `${window.location.pathname}?${params.toString()}`);
+        await refreshTable(url);
+        loadedRecordsSchoolYear = schoolYear;
+        applyRecordsClientFilters();
+      } finally {
+        if (showLoading) {
+          setRecordsFilterLoading(false);
+        }
+        recordsSearchInProgress = false;
+        updateRecordsSearchStatus(false);
       }
-
-      updateRecordsSearchStatus(true);
-      const formData = new FormData(filterForm);
-      const params = new URLSearchParams(formData);
-      params.set('q', '');
-      params.set('section', '');
-      const fetchParams = new URLSearchParams();
-      fetchParams.set('school_year', schoolYear);
-      const url = `${window.location.pathname}?${fetchParams.toString()}`;
-      window.history.replaceState({}, '', `${window.location.pathname}?${params.toString()}`);
-      await refreshTable(url);
-      loadedRecordsSchoolYear = schoolYear;
-      applyRecordsClientFilters();
-
-      if (searchBtn) {
-        searchBtn.disabled = false;
-        searchBtn.classList.remove('is-loading');
-        searchBtn.textContent = searchBtn.dataset.originalText || 'Search';
-      }
-      recordsSearchInProgress = false;
-      updateRecordsSearchStatus(false);
 
       if (recordsSearchQueued) {
         recordsSearchQueued = false;
@@ -2078,7 +2098,10 @@
       }
     };
 
-    const queueRecordsSearch = () => {
+    const queueRecordsSearch = (withLoading = false) => {
+      if (withLoading) {
+        pendingRecordsLoading = true;
+      }
       updateRecordsSearchStatus(false);
       clearTimeout(recordsSearchDebounce);
       recordsSearchDebounce = setTimeout(() => {
@@ -2097,13 +2120,13 @@
         recordsSearchInput.addEventListener('input', queueRecordsSearch);
       }
       if (recordsSectionInput) {
-        recordsSectionInput.addEventListener('change', queueRecordsSearch);
+        recordsSectionInput.addEventListener('change', () => queueRecordsSearch(true));
       }
       if (recordsStatusInput) {
-        recordsStatusInput.addEventListener('change', queueRecordsSearch);
+        recordsStatusInput.addEventListener('change', () => queueRecordsSearch(true));
       }
       if (recordsSchoolYearInput) {
-        recordsSchoolYearInput.addEventListener('change', queueRecordsSearch);
+        recordsSchoolYearInput.addEventListener('change', () => queueRecordsSearch(true));
       }
 
       updateRecordsSearchStatus(false);
@@ -3076,7 +3099,6 @@
         const sectionOptions = Array.from(sectionFilter.querySelectorAll('option[data-school-year]'));
         const selectedSection = sectionFilter.dataset.selected || '';
         const recordsSearchInput = document.getElementById('records_search_q');
-        const recordsSearchBtn = document.getElementById('records_search_btn');
         const recordsStatusFilter = document.getElementById('ojt_status_filter');
 
         const applySectionFilter = () => {
@@ -3104,9 +3126,6 @@
             if (!hasYear) {
               recordsSearchInput.value = '';
             }
-          }
-          if (recordsSearchBtn) {
-            recordsSearchBtn.disabled = !hasYear;
           }
           if (recordsStatusFilter) {
             recordsStatusFilter.disabled = !hasYear;

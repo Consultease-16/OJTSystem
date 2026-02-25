@@ -97,6 +97,20 @@
       transition: all 0.2s ease;
     }
 
+    .toolbar-actions {
+      display: inline-flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .view-panel {
+      display: none;
+    }
+
+    .view-panel.active {
+      display: block;
+    }
+
     .btn:hover {
       transform: translateY(-1px);
       box-shadow: 0 6px 16px rgba(15, 43, 82, 0.2);
@@ -359,6 +373,40 @@
       display: flex;
     }
 
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      padding: 4px 10px;
+      font-size: 11px;
+      font-weight: 700;
+      line-height: 1;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+
+    .status-pill.active {
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .status-pill.expiring {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .status-pill.expired {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .partnered-note {
+      margin-top: 6px;
+      font-size: 12px;
+      color: #92400e;
+      font-weight: 600;
+    }
+
     .loading-card {
       background: #fff;
       border: 1px solid var(--line);
@@ -409,10 +457,13 @@
   {% include "partials/staff_sidebar.html" %}
 
   <main class="content">
-    <section class="panel">
+    <section class="panel view-panel active" id="checklist_panel">
       <h2>Company Checklist</h2>
       <div class="toolbar">
-        <button class="btn" type="button" id="add_company_row">Add Company</button>
+        <div class="toolbar-actions">
+          <button class="btn" type="button" id="add_company_row">Add Company</button>
+          <button class="btn secondary" type="button" id="view_partnered_companies">Active Partnered Companies</button>
+        </div>
         <input
           class="toolbar-search"
           type="search"
@@ -435,6 +486,31 @@
             </tr>
           </thead>
           <tbody id="company_checklist_body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel view-panel" id="partnered_panel">
+      <h2>Active Partnered Companies</h2>
+      <div class="toolbar">
+        <div class="toolbar-actions">
+          <button class="btn secondary" type="button" id="back_to_checklist">Back to Company Checklist</button>
+        </div>
+        <span class="toolbar-note">Set MOA expiration date and monitor company agreement status.</span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Company</th>
+              <th>MOA Start Date</th>
+              <th>MOA Expiration Date</th>
+              <th>MOA Status</th>
+            </tr>
+          </thead>
+          <tbody id="partnered_companies_body">
+            <tr><td colspan="4">No active partnered companies.</td></tr>
+          </tbody>
         </table>
       </div>
     </section>
@@ -483,8 +559,12 @@
     })();
 
     const API_URL = "{% url 'company_checklist_data' %}";
+    const checklistPanel = document.getElementById("checklist_panel");
+    const partneredPanel = document.getElementById("partnered_panel");
     const checklistBody = document.getElementById("company_checklist_body");
     const addBtn = document.getElementById("add_company_row");
+    const partneredBtn = document.getElementById("view_partnered_companies");
+    const backToChecklistBtn = document.getElementById("back_to_checklist");
     const companySearch = document.getElementById("company_search");
     const uncheckModal = document.getElementById("uncheck_confirm_modal");
     const uncheckCancelBtn = document.getElementById("uncheck_cancel_btn");
@@ -494,6 +574,7 @@
     const deleteConfirmBtn = document.getElementById("delete_confirm_btn");
     const loadingOverlay = document.getElementById("loading_overlay");
     const loadingText = document.getElementById("loading_text");
+    const partneredBody = document.getElementById("partnered_companies_body");
 
     const formatDateTime = (value) => {
       if (!value) return "-";
@@ -505,6 +586,17 @@
         year: "numeric",
         hour: "numeric",
         minute: "2-digit",
+      });
+    };
+
+    const formatDate = (value) => {
+      if (!value) return "-";
+      const d = new Date(value);
+      if (Number.isNaN(d.getTime())) return "-";
+      return d.toLocaleDateString("en-US", {
+        month: "long",
+        day: "numeric",
+        year: "numeric",
       });
     };
 
@@ -546,6 +638,7 @@
     });
 
     let rows = [];
+    let partneredRows = [];
     let searchTerm = "";
     let pendingUncheck = null;
     let pendingDeleteRowId = null;
@@ -555,6 +648,49 @@
       loadingText.textContent = text;
       loadingOverlay.classList.toggle("active", active);
       loadingOverlay.setAttribute("aria-hidden", active ? "false" : "true");
+    };
+
+    const renderPartneredRows = () => {
+      if (!partneredBody) return;
+      partneredBody.innerHTML = "";
+      if (!partneredRows.length) {
+        partneredBody.innerHTML = '<tr><td colspan="4">No active partnered companies.</td></tr>';
+        return;
+      }
+
+      partneredRows.forEach((row) => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${(row.company_name || "").replace(/</g, "&lt;").replace(/>/g, "&gt;")}</td>
+          <td>${formatDate(row.moa_start_date)}</td>
+          <td>
+            <input
+              type="date"
+              data-role="partnered-expiration"
+              data-row-key="${row.row_key}"
+              value="${row.moa_expiration_date || ""}"
+            />
+            ${row.notice ? `<div class="partnered-note">${row.notice}</div>` : ""}
+          </td>
+          <td><span class="status-pill ${row.status}">${row.status_label}</span></td>
+        `;
+        partneredBody.appendChild(tr);
+      });
+    };
+
+    const syncPartneredRows = (nextRows) => {
+      partneredRows = Array.isArray(nextRows) ? nextRows : [];
+      renderPartneredRows();
+    };
+
+    const showChecklistPanel = () => {
+      checklistPanel?.classList.add("active");
+      partneredPanel?.classList.remove("active");
+    };
+
+    const showPartneredPanel = () => {
+      checklistPanel?.classList.remove("active");
+      partneredPanel?.classList.add("active");
     };
 
     const closeUncheckModal = () => {
@@ -699,6 +835,7 @@
     const reloadRows = async () => {
       const data = await requestJson("GET");
       rows = (data.rows || []).map(normalizeRow);
+      syncPartneredRows(data.partnered || []);
       renderRows();
     };
 
@@ -712,6 +849,7 @@
       if (idx >= 0) {
         rows[idx] = normalizeRow(data.row);
       }
+      syncPartneredRows(data.partnered || partneredRows);
       renderRows();
     };
 
@@ -732,6 +870,13 @@
       searchTerm = (event.target.value || "").trim().toLowerCase();
       renderRows();
     });
+
+    partneredBtn?.addEventListener("click", () => {
+      renderPartneredRows();
+      showPartneredPanel();
+    });
+
+    backToChecklistBtn?.addEventListener("click", showChecklistPanel);
 
     checklistBody.addEventListener("change", async (event) => {
       const input = event.target.closest('input[type="text"][data-row-key][data-field="companyName"]');
@@ -857,12 +1002,34 @@
       if (!pendingDeleteRowId) return;
       setLoading(true, "Deleting company row...");
       try {
-        await requestJson("POST", { action: "delete", row_key: pendingDeleteRowId });
+        const data = await requestJson("POST", { action: "delete", row_key: pendingDeleteRowId });
         rows = rows.filter((row) => row.rowKey !== pendingDeleteRowId);
+        syncPartneredRows(data.partnered || partneredRows);
         renderRows();
         closeDeleteModal();
       } catch (err) {
         alert(err.message || "Failed to delete row.");
+      } finally {
+        setLoading(false);
+      }
+    });
+
+    partneredBody?.addEventListener("change", async (event) => {
+      const input = event.target.closest('input[data-role="partnered-expiration"]');
+      if (!input) return;
+      const rowKey = input.dataset.rowKey;
+      if (!rowKey) return;
+      setLoading(true, "Saving MOA expiration date...");
+      try {
+        const data = await requestJson("POST", {
+          action: "update_partnered_expiration",
+          row_key: rowKey,
+          expiration_date: input.value || "",
+        });
+        syncPartneredRows(data.partnered || partneredRows);
+      } catch (err) {
+        alert(err.message || "Failed to save expiration date.");
+        await reloadRows();
       } finally {
         setLoading(false);
       }

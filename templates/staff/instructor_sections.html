@@ -308,6 +308,47 @@
       display: flex;
     }
 
+    .loading-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(10, 10, 12, 0.42);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1300;
+      backdrop-filter: blur(2px);
+    }
+
+    .loading-backdrop.active {
+      display: flex;
+    }
+
+    .loading-card {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 14px 18px;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--accent);
+      font-weight: 600;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.16);
+    }
+
+    .loading-spinner {
+      width: 16px;
+      height: 16px;
+      border-radius: 999px;
+      border: 2px solid rgba(15, 43, 82, 0.2);
+      border-top-color: var(--accent);
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
     .modal {
       width: min(1300px, 100%);
       max-height: 90vh;
@@ -556,6 +597,13 @@
     </div>
   </div>
 
+  <div class="loading-backdrop" id="section_loading_backdrop" aria-hidden="true">
+    <div class="loading-card" role="status" aria-live="polite">
+      <span class="loading-spinner" aria-hidden="true"></span>
+      <span>Loading section details...</span>
+    </div>
+  </div>
+
   <script>
     document.addEventListener('DOMContentLoaded', function() {
       const navBtn = document.querySelector('.nav-btn');
@@ -599,6 +647,13 @@
       const modalBackdrop = document.getElementById('section_modal_backdrop');
       const modalClose = document.getElementById('section_modal_close');
       const modalTitle = document.getElementById('section_modal_title');
+      const sectionLoadingBackdrop = document.getElementById('section_loading_backdrop');
+
+      function setSectionLoading(active) {
+        if (!sectionLoadingBackdrop) return;
+        sectionLoadingBackdrop.classList.toggle('active', Boolean(active));
+        sectionLoadingBackdrop.setAttribute('aria-hidden', active ? 'false' : 'true');
+      }
 
       function setTableHtml(tableId, headers, rowsHtml) {
         const table = document.getElementById(tableId);
@@ -773,6 +828,7 @@
       async function openSectionModal(sectionKey) {
         if (!sectionKey) return;
         activeSectionId = sectionKey;
+        setSectionLoading(true);
         try {
           const data = await fetchSectionData(sectionKey);
           renderSectionModalData(data);
@@ -783,6 +839,8 @@
           modalRefreshTimer = setInterval(refreshOpenModal, 10000);
         } catch (err) {
           showPageNotice(err.message || "Failed to load section details.");
+        } finally {
+          setSectionLoading(false);
         }
       }
 

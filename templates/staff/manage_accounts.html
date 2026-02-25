@@ -171,6 +171,47 @@
       justify-self: end;
     }
 
+    .loading-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(10, 10, 12, 0.42);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1200;
+      backdrop-filter: blur(2px);
+    }
+
+    .loading-backdrop.active {
+      display: flex;
+    }
+
+    .loading-card {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 14px 18px;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--accent);
+      font-weight: 600;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.16);
+    }
+
+    .loading-spinner {
+      width: 16px;
+      height: 16px;
+      border-radius: 999px;
+      border: 2px solid rgba(15, 43, 82, 0.2);
+      border-top-color: var(--accent);
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
     /* Forms */
     .form-grid {
       display: grid;
@@ -628,6 +669,12 @@
     </div>
   </div>
   {% endif %}
+  <div class="loading-backdrop" id="school_year_loading" aria-hidden="true">
+    <div class="loading-card" role="status" aria-live="polite">
+      <span class="loading-spinner" aria-hidden="true"></span>
+      <span>Loading students...</span>
+    </div>
+  </div>
   <script>
     document.addEventListener('DOMContentLoaded', function() {
       const populateSchoolYears = (selectorId, currentValue) => {
@@ -1112,6 +1159,12 @@
     const studentSearch = document.getElementById('student_search');
     const sectionFilter = document.getElementById('section_filter');
     const syFilter = document.getElementById('school_year_filter');
+    const schoolYearLoading = document.getElementById('school_year_loading');
+    const setSchoolYearLoading = (active) => {
+      if (!schoolYearLoading) return;
+      schoolYearLoading.classList.toggle('active', Boolean(active));
+      schoolYearLoading.setAttribute('aria-hidden', active ? 'false' : 'true');
+    };
     if (studentSearch) {
       studentSearch.addEventListener('input', applyStudentFilters);
     }
@@ -1119,15 +1172,18 @@
       sectionFilter.addEventListener('change', applyStudentFilters);
     }
     if (syFilter) {
-      syFilter.addEventListener('change', () => {
+      syFilter.addEventListener('change', async () => {
+        setSchoolYearLoading(true);
         if (studentSearch) {
           studentSearch.disabled = !syFilter.value;
           if (!syFilter.value) {
             studentSearch.value = '';
           }
         }
+        await new Promise((resolve) => requestAnimationFrame(resolve));
         refreshFilterOptions();
         applyStudentFilters();
+        window.setTimeout(() => setSchoolYearLoading(false), 180);
       });
     }
     const instructorSearch = document.getElementById('instructor_search');
