@@ -590,36 +590,6 @@ def staff_home(request):
     return response
 
 
-@never_cache
-def staff_create_forms(request):
-    account_id = request.session.get("account_id")
-    account_type = request.session.get("account_type")
-    if not account_id or account_type not in {"coordinator", "instructor"}:
-        request.session["flash_message"] = "Please log in to continue."
-        request.session["flash_message_type"] = "error"
-        return redirect("front_page")
-
-    model = PracticumCoordinator if account_type == "coordinator" else PracticumInstructor
-    account = model.objects.filter(id=account_id).first()
-    if not account:
-        request.session.pop("account_id", None)
-        request.session.pop("account_type", None)
-        return redirect("front_page")
-
-    response = render(
-        request,
-        "staff/create_forms.html",
-        {
-            "account": account,
-            "role": account_type,
-        },
-    )
-    response["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
-    response["Pragma"] = "no-cache"
-    response["Expires"] = "0"
-    return response
-
-
 def _build_instructor_section_detail(cursor, section, school_year):
     school_year_start = None
     school_year_end = None

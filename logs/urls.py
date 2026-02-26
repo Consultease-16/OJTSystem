@@ -9,7 +9,6 @@ urlpatterns = [
     path('change-password/', views.change_temp_password, name='change_temp_password'),
     path('student/', views.student_home, name='student_home'),
     path('staff/', views.staff_home, name='staff_home'),
-    path('staff/create-forms/', views.staff_create_forms, name='staff_create_forms'),
     path('staff/manage-records/', views.manage_records, name='manage_records'),
     path('staff/company-checklist/', views.company_checklist, name='company_checklist'),
     path('staff/company-checklist/data/', views.company_checklist_data, name='company_checklist_data'),
