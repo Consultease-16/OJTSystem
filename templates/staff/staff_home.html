@@ -237,6 +237,11 @@
           <p>Update trainee status and practicum details.</p>
           <a href="{% url 'manage_records' %}">Open Records</a>
         </div>
+        <div class="action">
+          <h3>Create Forms</h3>
+          <p>Open the forms test page and create custom form drafts.</p>
+          <a href="{% url 'staff_create_forms' %}">Open Forms</a>
+        </div>
       </section>
       {% else %}
       <section class="actions">
@@ -249,6 +254,11 @@
           <h3>Profile</h3>
           <p>View your profile and account details.</p>
           <a href="{% url 'staff_profile' %}">Open Profile</a>
+        </div>
+        <div class="action">
+          <h3>Create Forms</h3>
+          <p>Open the forms test page and create custom form drafts.</p>
+          <a href="{% url 'staff_create_forms' %}">Open Forms</a>
         </div>
       </section>
       {% endif %}

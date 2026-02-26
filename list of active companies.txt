@@ -11,12 +11,12 @@ March 25, 2026
 
 something like this,
 
-then in the side it will show the starting day of the MOA(it will be when the user marked it as processed and notarized, that date will be the day of the start date of the MOA) of the Active Partnered Company and beside is Expiration day of the MOA of the Active Partnered Company(the user is the one will enter the expiration day of the MOA)
-then beside of it again is MOA Status, (Active, Expired or it can be changing into active and how many months/days left before the expiration, but this function is will do its work if it entered the 6months mark before the expiration date) 
+then in the side it will show the starting day of the Memorandum of Agreement(it will be when the user marked it as processed and notarized, that date will be the day of the start date of the Memorandum of Agreement) of the Active Partnered Company and beside is Expiration day of the Memorandum of Agreement of the Active Partnered Company(the user is the one will enter the expiration day of the Memorandum of Agreement)
+then beside of it again is Memorandum of Agreement Status, (Active, Expired or it can be changing into active and how many months/days left before the expiration, but this function is will do its work if it entered the 6months mark before the expiration date) 
 Active color Green
 Expired Color Red
 Active green but when changes to count before the expiration date(color yellow)
 
 the user is the one will be adding the date of the expiration
-6month prior of the expiration  will notify the user the expiration is nearing for(company name)
+6months prior of the expiration  will notify the user the Memorandum of Agreement expiration is nearing for(company name)
 backdate for expiration of the active companies 
