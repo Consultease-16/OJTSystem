@@ -1159,6 +1159,24 @@
     const studentSearch = document.getElementById('student_search');
     const sectionFilter = document.getElementById('section_filter');
     const syFilter = document.getElementById('school_year_filter');
+    const isReloadNavigation = (() => {
+      const navEntry = performance.getEntriesByType?.('navigation')?.[0];
+      if (navEntry && navEntry.type) return navEntry.type === 'reload';
+      return performance.navigation?.type === 1;
+    })();
+
+    // Reset student/instructor list filters on browser refresh.
+    if (isReloadNavigation) {
+      if (window.location.search) {
+        window.history.replaceState({}, '', window.location.pathname);
+      }
+      if (studentSearch) studentSearch.value = '';
+      if (sectionFilter) sectionFilter.value = '';
+      if (syFilter) syFilter.value = '';
+      const instructorSearchReset = document.getElementById('instructor_search');
+      if (instructorSearchReset) instructorSearchReset.value = '';
+    }
+
     const schoolYearLoading = document.getElementById('school_year_loading');
     const setSchoolYearLoading = (active) => {
       if (!schoolYearLoading) return;

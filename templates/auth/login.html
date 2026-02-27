@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>ICSLIS OJT System | Sign In</title>
+  <title>ICSLIS OJT System | Login</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@400;600;700&family=Work+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
@@ -316,6 +316,26 @@
 
     .btn:hover { background: linear-gradient(135deg, #0d2750 0%, #0f3567 45%, #c59a37 100%); box-shadow: 0 14px 28px rgba(15, 43, 82, 0.34), inset 0 0 0 1px rgba(217, 182, 90, 0.7); }
     .btn:active { transform: translateY(1px); }
+    .btn:disabled {
+      cursor: wait;
+      opacity: 0.88;
+      transform: none;
+    }
+    .btn.is-loading {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+    }
+    .btn.is-loading::before {
+      content: "";
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(255, 255, 255, 0.35);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
 
     .meta {
       display: flex;
@@ -377,6 +397,10 @@
       .card { padding: 20px; }
       .btn { width: 100%; }
     }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
   </style>
 </head>
 <body>
@@ -399,20 +423,20 @@
     </section>
 
     <section class="card">
-      <h2>Sign in</h2>
+      <h2>Login</h2>
       {% if message %}
         <p class="alert {% if message_type %}{{ message_type }}{% endif %}">{{ message }}</p>
       {% endif %}
-      <form method="post">
+      <form method="post" autocomplete="off" id="login_form">
         {% csrf_token %}
         <div class="field">
           <label for="id_username">CCA Email</label>
-          <input id="id_username" name="cca_email" type="email" placeholder="user@cca.edu.ph" required />
+          <input id="id_username" name="cca_email" type="email" placeholder="user@cca.edu.ph" required autocomplete="off" />
         </div>
         <div class="field">
           <label for="id_password">Password</label>
           <div class="input-wrap">
-            <input id="id_password" name="password" type="password" placeholder="••••••••" required />
+            <input id="id_password" name="password" type="password" placeholder="••••••••" required autocomplete="off" />
             <button class="toggle-pass" type="button" aria-label="Show password" aria-pressed="false">
               <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false">
                 <path d="M12 5C6.8 5 2.5 8.3 1 12c1.5 3.7 5.8 7 11 7s9.5-3.3 11-7c-1.5-3.7-5.8-7-11-7zm0 11a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm0-6a2 2 0 1 0 0 4 2 2 0 0 0 0-4z" fill="currentColor"/>
@@ -423,7 +447,7 @@
         <div class="actions">
           <a href="{% url 'forgot_password' %}">Forgot password?</a>
         </div>
-        <button class="btn" type="submit">Sign in</button>
+        <button class="btn" type="submit" id="login_submit_btn">Login</button>
         <div class="divider">or</div>
         <a class="ghost" href="{% url 'activate_account' %}">Activate Account</a>
       </form>
@@ -433,12 +457,28 @@
   <script>
     const toggle = document.querySelector(".toggle-pass");
     const passwordInput = document.querySelector("#id_password");
+    const loginForm = document.querySelector("#login_form");
+    const loginBtn = document.querySelector("#login_submit_btn");
 
     toggle?.addEventListener("click", () => {
       const isPassword = passwordInput.type === "password";
       passwordInput.type = isPassword ? "text" : "password";
       toggle.setAttribute("aria-pressed", String(isPassword));
       toggle.setAttribute("aria-label", isPassword ? "Hide password" : "Show password");
+    });
+
+    loginForm?.addEventListener("submit", () => {
+      if (!loginBtn) return;
+      loginBtn.disabled = true;
+      loginBtn.classList.add("is-loading");
+      loginBtn.textContent = "Logging in...";
+    });
+
+    window.addEventListener("pageshow", () => {
+      if (!loginBtn) return;
+      loginBtn.disabled = false;
+      loginBtn.classList.remove("is-loading");
+      loginBtn.textContent = "Login";
     });
 
   </script>

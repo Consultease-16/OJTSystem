@@ -596,6 +596,58 @@
       color: var(--ink);
     }
 
+    /* Missing Requirements Styling */
+    .missing-summary {
+      background: #fff5f5;
+      border: 1px solid #feb2b2;
+      border-radius: 12px;
+      padding: 16px;
+      margin: 0 24px 20px;
+      display: none;
+    }
+    .missing-summary h3 {
+      margin: 0 0 10px;
+      font-size: 13px;
+      color: #c53030;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .missing-summary h3::before {
+      content: '⚠️';
+      font-size: 14px;
+    }
+    .missing-summary ul {
+      margin: 0;
+      padding: 0 0 0 18px;
+      color: #9b2c2c;
+      font-size: 12px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 4px 20px;
+      list-style-type: disc;
+    }
+    .missing-count {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: #fee2e2;
+      color: #991b1b;
+      font-size: 10px;
+      font-weight: 700;
+      min-width: 18px;
+      height: 18px;
+      padding: 0 5px;
+      border-radius: 10px;
+      margin-left: 8px;
+      cursor: help;
+      border: 1px solid #fecaca;
+      vertical-align: middle;
+    }
+
     /* DTR Styles */
     .dtr-grid {
       display: grid;
@@ -686,17 +738,43 @@
       flex-shrink: 0;
     }
 
-    .modal .form-grid {
-      padding: 0 24px 24px;
+    .modal .checklist-scroll {
       overflow-y: auto;
       -webkit-overflow-scrolling: touch;
       flex: 1;
+      min-height: 0;
+    }
+
+    .modal .form-grid {
+      padding: 0;
+      overflow: visible;
+      flex: 0;
+    }
+
+    /* Keep the checklist area as the primary scroll container for smoother browsing. */
+    #requirements_modal {
+      overflow: hidden;
+    }
+
+    #requirements_modal .modal {
+      max-height: 94vh;
+    }
+
+    #requirements_modal .panel {
+      height: 100%;
+      min-height: 0;
+    }
+
+    #requirements_modal .checklist-scroll {
+      min-height: 320px;
+      overscroll-behavior: contain;
     }
 
     @media (max-width: 600px) {
       .modal-backdrop { align-items: flex-start; padding: 16px; }
       .modal { max-height: calc(100vh - 32px); }
-      .modal .form-grid { max-height: calc(100vh - 140px); }
+      .modal .checklist-scroll { max-height: calc(100vh - 140px); }
+      #requirements_modal .checklist-scroll { min-height: 260px; }
     }
 
     @keyframes slideUp {
@@ -1023,7 +1101,7 @@
           <button type="submit">Add Schedule</button>
         </form>
         <div class="form-actions" style="justify-content: flex-start; margin-top: 12px;">
-          <button class="btn secondary" type="button" id="delete_selected_schedules" style="display: none;">Delete Selected</button>
+          <button class="btn secondary" type="button" id="delete_selected_schedules" style="display: none;">Remove Selected</button>
           <button class="btn secondary" type="button" id="clear_selected_schedules" style="display: none;">Cancel Selection</button>
         </div>
         <div class="table-wrap">
@@ -1094,8 +1172,14 @@
         <div id="modal_message_panel" style="padding: 0 28px;"></div>
 
         <!-- View: Checklist -->
-        <div class="form-grid" style="grid-template-columns: 1fr; gap: 0; padding: 0;" id="modal_req_list">
-          <!-- Requirements items will be injected here -->
+        <div id="modal_checklist_view" class="checklist-scroll">
+          <div id="modal_missing_summary" class="missing-summary">
+            <h3>Missing Requirements</h3>
+            <ul id="modal_missing_list"></ul>
+          </div>
+          <div class="form-grid" style="grid-template-columns: 1fr; gap: 0;" id="modal_req_list">
+            <!-- Requirements items will be injected here -->
+          </div>
         </div>
 
         <!-- View: Attendance -->
@@ -1308,6 +1392,16 @@
       const currentTbody = document.getElementById('requirements_tbody');
       if (newTbody && currentTbody) {
         currentTbody.innerHTML = newTbody.innerHTML;
+        // Re-initialize missing counts for the new rows
+        currentTbody.querySelectorAll('.view-requirements-btn').forEach(btn => {
+          const sid = btn.dataset.studentKey;
+          if (sid && btn.dataset.reqs) {
+            try {
+              const reqs = JSON.parse(btn.dataset.reqs);
+              updateOjtStatusCell(sid, reqs);
+            } catch (e) {}
+          }
+        });
       }
     };
 
@@ -1421,6 +1515,7 @@
     // Modal Logic
     const modal = document.getElementById('requirements_modal');
     const modalStudentName = document.getElementById('modal_student_name');
+    const modalChecklistView = document.getElementById('modal_checklist_view');
     const modalReqList = document.getElementById('modal_req_list');
     const modalStudentSection = document.getElementById('modal_student_section');
     const closeModalBtn = document.getElementById('close_requirements_modal');
@@ -1442,6 +1537,8 @@
     const dtrTotalHours = document.getElementById('dtr_total_hours');
     const dtrCompletionStatus = document.getElementById('dtr_completion_status');
     const dtrSaveBtn = document.getElementById('dtr_save_btn');
+    const modalMissingSummary = document.getElementById('modal_missing_summary');
+    const modalMissingList = document.getElementById('modal_missing_list');
     let currentModalSection = '';
     let currentModalStudentId = '';
 
@@ -1462,6 +1559,27 @@
       ojt_log_sheet: "Form 14 OJT Log Sheet",
       requirements_checklist: "Form 15 Requirements Check List",
       cca_hymn: "Final Requirement CCA Hymn"
+    };
+
+    const getMissingRequirements = (reqs) => {
+      const missing = [];
+      for (const [key, label] of Object.entries(LABELS)) {
+        if (reqs[key] !== true) {
+          missing.push(label);
+        }
+      }
+      return missing;
+    };
+
+    const updateModalMissingSummary = (reqs) => {
+      if (!modalMissingSummary || !modalMissingList) return;
+      const missing = getMissingRequirements(reqs);
+      if (missing.length > 0) {
+        modalMissingList.innerHTML = missing.map(label => `<li>${label}</li>`).join('');
+        modalMissingSummary.style.display = 'block';
+      } else {
+        modalMissingSummary.style.display = 'none';
+      }
     };
 
     const saveStartOfOjt = async (studentId, dateValue) => {
@@ -1570,6 +1688,8 @@
       currentModalSection = section || '';
       modalReqList.innerHTML = '';
 
+      updateModalMissingSummary(reqs);
+
       const startRow = document.createElement('div');
       startRow.className = 'checklist-item';
       startRow.innerHTML = `
@@ -1628,7 +1748,9 @@
         const isChecklist = selectedView === 'checklist';
         const isAttendance = selectedView === 'attendance';
         const isDtr = selectedView === 'dtr';
-        modalReqList.style.display = isChecklist ? 'grid' : 'none';
+        if (modalChecklistView) {
+          modalChecklistView.style.display = isChecklist ? 'block' : 'none';
+        }
         modalAttendanceView.style.display = isAttendance ? 'block' : 'none';
         modalDtrView.style.display = isDtr ? 'block' : 'none';
         if (isAttendance) {
@@ -1754,6 +1876,11 @@
         Number(reqs.dtr_may_hours || 0) +
         Number(reqs.dtr_june_hours || 0);
 
+      const missing = getMissingRequirements(reqs);
+      const missingHtml = missing.length > 0 
+        ? `<span class="missing-count" title="Missing: ${missing.join(', ')}">${missing.length} missing</span>` 
+        : '';
+
       if (totalHours >= 500) {
         cell.innerHTML = '<span class="ojt-status completed">Completed</span>';
         return;
@@ -1770,9 +1897,9 @@
         reqs.ojt_log_sheet === true &&
         reqs.requirements_checklist === true;
 
-      cell.innerHTML = hasOngoingReqs
+      cell.innerHTML = (hasOngoingReqs
         ? '<span class="ojt-status ongoing">Ongoing</span>'
-        : '<span class="ojt-status not-started">Not started</span>';
+        : '<span class="ojt-status not-started">Not started</span>') + missingHtml;
     };
 
     const updateCell = async (button) => {
@@ -1912,6 +2039,7 @@
           reqs[field] = data.value === true;
           mainBtn.dataset.reqs = JSON.stringify(reqs);
           updateOjtStatusCell(studentId, reqs);
+          updateModalMissingSummary(reqs);
         }
       })();
     });
@@ -2680,7 +2808,7 @@
           <td><input type="checkbox" class="schedule-select" data-section="${item.section}" aria-label="Select ${item.section}" /></td>
           <td>${item.section}</td>
           <td>${scheduleDays[item.submissionDay]}</td>
-          <td><button type="button" class="btn secondary" data-section="${item.section}">Delete</button></td>
+          <td><button type="button" class="btn secondary" data-section="${item.section}">Remove</button></td>
         `;
         scheduleList.appendChild(row);
       });
@@ -2804,7 +2932,7 @@
         }
         if (!sectionInput || !dayValue) return;
         if (submissionSchedules.some((item) => item.section === sectionInput)) {
-          showAlert("This section already has a submission day. Delete it first before adding a new one.", "error");
+          showAlert("This section already has a submission day. Remove it first before adding a new one.", "error");
           return;
         }
         setScheduleActionLoading(true, "Adding schedule...");
@@ -2904,10 +3032,10 @@
           .map((box) => box.dataset.section)
           .filter(Boolean);
         if (selected.length === 0) {
-          showAlert("Select at least one schedule to delete.", "error");
+          showAlert("Select at least one schedule to remove.", "error");
           return;
         }
-        openConfirm(`Delete ${selected.length} schedule(s)? This can't be undone.`, async () => {
+        openConfirm(`Remove ${selected.length} schedule(s)? This can't be undone.`, async () => {
           setScheduleActionLoading(true, "Deleting selected schedules...");
           try {
             for (const section of selected) {
@@ -2926,7 +3054,7 @@
             }
             await loadSchedules();
             refreshModalAttendance();
-            showAlert("Selected schedules deleted.", "success");
+            showAlert("Selected schedules removed.", "success");
           } finally {
             setScheduleActionLoading(false);
           }
@@ -3052,6 +3180,12 @@
   </script>
   <script>
     document.addEventListener('DOMContentLoaded', function() {
+      const isReloadNavigation = (() => {
+        const navEntry = performance.getEntriesByType?.('navigation')?.[0];
+        if (navEntry && navEntry.type) return navEntry.type === 'reload';
+        return performance.navigation?.type === 1;
+      })();
+
       const populateSchoolYears = (selectorId, currentValue) => {
         const select = document.getElementById(selectorId);
         if (!select) return;
@@ -3087,7 +3221,34 @@
 
       const syFilter = document.getElementById('school_year_filter');
       const sectionFilter = document.getElementById('records_section_filter');
+      const statusFilter = document.getElementById('ojt_status_filter');
+      const searchFilter = document.getElementById('records_search_q');
       const scheduleYearFilter = document.getElementById('schedule_school_year');
+
+      // On browser refresh, reset filter dropdowns/inputs so the page starts fresh.
+      if (isReloadNavigation) {
+        if (window.location.search) {
+          window.history.replaceState({}, '', window.location.pathname);
+        }
+        if (searchFilter) searchFilter.value = '';
+        if (sectionFilter) {
+          sectionFilter.value = '';
+          sectionFilter.dataset.selected = '';
+        }
+        if (statusFilter) {
+          statusFilter.value = '';
+          statusFilter.dataset.selected = '';
+        }
+        if (syFilter) {
+          syFilter.value = '';
+          syFilter.dataset.selected = '';
+        }
+        if (scheduleYearFilter) {
+          scheduleYearFilter.value = '';
+          scheduleYearFilter.dataset.selected = '';
+        }
+      }
+
       if (syFilter) {
         populateSchoolYears('school_year_filter', syFilter.dataset.selected);
       }
@@ -3168,6 +3329,19 @@
       if (backdrop) {
         backdrop.addEventListener('click', closeSidebar);
       }
+
+      // Initialize missing counts for all students on load
+      document.querySelectorAll('.view-requirements-btn').forEach(btn => {
+        const sid = btn.dataset.studentKey;
+        if (sid && btn.dataset.reqs) {
+          try {
+            const reqs = JSON.parse(btn.dataset.reqs);
+            updateOjtStatusCell(sid, reqs);
+          } catch (e) {
+            console.error("Error parsing reqs for student", sid, e);
+          }
+        }
+      });
 
     });
   </script>
